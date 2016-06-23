@@ -3,7 +3,7 @@ import homeTemplate from 'text!./home.html';
 
 class HomeViewModel {
     constructor(route) {
-        this.message = ko.observable('Welcome to calculator-ko!');
+        this.message = ko.observable('Welcome to calculatall-app!');
     }
     
     doSomething() {
