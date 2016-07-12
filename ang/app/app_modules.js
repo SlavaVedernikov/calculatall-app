@@ -1,69 +1,8 @@
 'use strict';
-/*
-var modules = [{
-		"name": "system_object_types",
-		"display_name": "System Object Types",
-		"view": {
-			"data_source": "system_object_types",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			},
-			{
-				"displayName": "Description",
-				"sourceName": "description"
-			}]
-		}
-	},
-	{
-		"name": "custom_object_types",
-		"display_name": "Custom Object Types",
-		"view": {
-			"data_source": "custom_object_types",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			},
-			{
-				"displayName": "Description",
-				"sourceName": "description"
-			}]
-		}
-	},
-	{
-		"name": "objects",
-		"display_name": "Objects",
-		"view": {
-			"data_source": "objects",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			},
-			{
-				"displayName": "Description",
-				"sourceName": "description"
-			}]
-		}
-	}];
-*/
-for (var i = 0; i < modules.length; i++) {
-    var moduleName  = modules[i].name;
-	var moduleDisplayName = modules[i].display_name;
+
+for (var i = 0; i < pages.length; i++) {
+    var moduleName  = pages[i].name;
+	var moduleDisplayName = pages[i].display_name;
 
 	
 	var module = angular.module('myApp.' + moduleName, ['ngRoute']);
@@ -98,11 +37,11 @@ for (var i = 0; i < modules.length; i++) {
 			'</div>',
 		resolve: {
 			rows: function($route) { 
-					var result = jsonPath(modules, "$.[?(@.name=='" + $route.current.params.module + "')]");
+					var result = jsonPath(pages, "$.[?(@.name=='" + $route.current.params.module + "')]");
 					return result[0].layout.rows;
 				},
 			views: function($route) { 
-					var result = jsonPath(modules, "$.[?(@.name=='" + $route.current.params.module + "')]");
+					var result = jsonPath(pages, "$.[?(@.name=='" + $route.current.params.module + "')]");
 					return result[0].views;
 				}
 		},
@@ -114,23 +53,8 @@ for (var i = 0; i < modules.length; i++) {
 	
 	module.controller('shared_ctrl', function($scope, $routeParams) {
 		var self = this;
-		
-		
-		var result = jsonPath(modules, "$.[?(@.name=='" + $routeParams.module + "')]");
-		
-		//alert(result[0].display_name);
+		var result = jsonPath(pages, "$.[?(@.name=='" + $routeParams.module + "')]");
 		
 		self.module = result[0];
-		
-		//alert(self.module.name);
-		
-		//alert(self.dtColumns.length);
-		
-	});
-	
-	
-	//module.controller('grid_ctrl', grid_ctrl);
-
-	
-	
+	});	
 }

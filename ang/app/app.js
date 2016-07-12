@@ -1,6 +1,6 @@
 'use strict';
 ///*
-var modules = [{
+var pages = [{
 		"name": "system_object_types",
 		"display_name": "System Object Types",
 		"layout": {
