@@ -194,7 +194,7 @@ module.component('gridView', {
 						
 						var self = this;
 						
-						var serviceRootURL = 'http://127.0.0.1:8181';
+						var serviceRootURL = 'https://calculatall-api.herokuapp.com';
 						self.message = '';
 						self.edit = edit;
 						self.delete = deleteRow;
