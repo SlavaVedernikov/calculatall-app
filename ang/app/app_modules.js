@@ -1,8 +1,8 @@
 'use strict';
 
-for (var i = 0; i < pages.length; i++) {
-    var moduleName  = pages[i].name;
-	var moduleDisplayName = pages[i].display_name;
+for (var i = 0; i < modules.length; i++) {
+    var moduleName  = modules[i].name;
+	var moduleDisplayName = modules[i].display_name;
 
 	
 	var module = angular.module('myApp.' + moduleName, ['ngRoute']);
@@ -37,11 +37,11 @@ for (var i = 0; i < pages.length; i++) {
 			'</div>',
 		resolve: {
 			rows: function($route) { 
-					var result = jsonPath(pages, "$.[?(@.name=='" + $route.current.params.module + "')]");
+					var result = jsonPath(modules, "$.[?(@.name=='" + $route.current.params.module + "')]");
 					return result[0].layout.rows;
 				},
 			views: function($route) { 
-					var result = jsonPath(pages, "$.[?(@.name=='" + $route.current.params.module + "')]");
+					var result = jsonPath(modules, "$.[?(@.name=='" + $route.current.params.module + "')]");
 					return result[0].views;
 				}
 		},
@@ -53,7 +53,7 @@ for (var i = 0; i < pages.length; i++) {
 	
 	module.controller('shared_ctrl', function($scope, $routeParams) {
 		var self = this;
-		var result = jsonPath(pages, "$.[?(@.name=='" + $routeParams.module + "')]");
+		var result = jsonPath(modules, "$.[?(@.name=='" + $routeParams.module + "')]");
 		
 		self.module = result[0];
 	});	
