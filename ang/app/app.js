@@ -301,27 +301,42 @@ module.component('gridView', {
 	});
 	
 module.component('formView', {
-		template: '<div class="modal-header">' +
-            '<h3 class="modal-title">Title goes here</h3>' +
-			'<div class="panel panel-default">' +
-			'<div class="panel-heading">{{data.display_name}}</div>' +
-			'<div class="panel-body">' +
-			
-			'<form name = "formView">' +
-			'<div ng-repeat="field in object_type.fields">' +
-			
-			'<div class="form-group">' +
-			'<label>{{field.display_name}}:</label>' +
-			'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+		template: 
+			'<div class="modal-header">' +
+				'<h3 class="modal-title">Title goes here</h3>' +
 			'</div>' +
-			
+			'<div class="modal-body">' +
+				'<div class="panel panel-default">' +
+					'<div class="panel-heading">{{data.display_name}}</div>' +
+					'<div class="panel-body">' +
+				
+						'<form name = "formView">' +
+							'<div ng-repeat="field in object_type.fields">' +
+					
+								'<div ng-switch on="field.data_type">' +
+									'<div class="animate-switch" ng-switch-when="string">' +
+										'<div class="form-group">' +
+											'<label>{{field.display_name}}:</label>' +
+											'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+										'</div>' +
+									'</div>' +
+									'<div class="animate-switch" ng-switch-default>' +
+										'<label>{{field.display_name}}:</label>' +
+										'<uib-accordion close-others="true">' +
+											'<uib-accordion-group heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
+												'{{item.description}}' +
+											'</uib-accordion-group>' +
+										'</uib-accordion>' +
+									'</div>' +
+								'<div>' +
+							'</div>' +
+						'</form>' +
+					'</div>' +
+				'</div>' +
 			'</div>' +
-			'</form>' +
 			'<div class="modal-footer">' +
-            '<button class="btn btn-primary" ng-click="ok()">OK</button>' +
-            '<button class="btn btn-warning" ng-click="cancel()">Cancel</button>' +
-			'</div>' +
-			'</div>' +
+				'<button class="btn btn-primary" ng-click="ok()">OK</button>' +
+				'<button class="btn btn-warning" ng-click="cancel()">Cancel</button>' +
 			'</div>',
 		controller: function ($routeParams, $scope, $http, $rootScope) {
 						
