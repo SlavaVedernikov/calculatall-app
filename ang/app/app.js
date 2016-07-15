@@ -230,8 +230,8 @@ module.component('gridView', {
 						
 						var self = this;
 						
-						//var serviceRootURL = 'https://calculatall-api.herokuapp.com';
-						var serviceRootURL = 'http://127.0.0.1:8181';
+						var serviceRootURL = 'https://calculatall-api.herokuapp.com';
+						//var serviceRootURL = 'http://127.0.0.1:8181';
 						self.edit = edit;
 						self.delete = deleteRow;
 						self.dtInstance = {};
@@ -342,8 +342,8 @@ module.component('formView', {
 						
 						var self = this;
 						
-						//var serviceRootURL = 'https://calculatall-api.herokuapp.com';
-						var serviceRootURL = 'http://127.0.0.1:8181';
+						var serviceRootURL = 'https://calculatall-api.herokuapp.com';
+						//var serviceRootURL = 'http://127.0.0.1:8181';
 						
 						$http({
 						  method: 'GET',
