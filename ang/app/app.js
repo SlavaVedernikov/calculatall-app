@@ -1,156 +1,31 @@
 'use strict';
-///*
-var modules = [{
+///*			
+var pages = [{
 		"name": "system_object_types",
 		"display_name": "System Object Types",
 		"layout": {
 			"rows": [{
 				"columns": [{
-					"size": 4,
+					"size": 12,
 					"containers": [{
 						"tabs": [{
-							"id": "system_object_types",
+							"name": "system_object_types",
 							"display_name": "System object types"
-						},
-						{
-							"id": "custom_object_types",
-							"display_name": "Custom Object Types"
 						}],
 						"views": [{
-							"id": "system_object_types",
-							"tab_id": "system_object_types"
-						},
-						{
-							"id": "custom_object_types",
-							"tab_id": "custom_object_types"
-						}]
-					}]
-				},
-				{
-					"size": 8,
-					"containers": [{
-						"tabs": [{
-							"id": "objects",
-							"display_name": "Objects"
-						}],
-						"views": [{
-							"id": "objects",
-							"tab_id": "objects"
+							"view": "system_object_types",
+							"tab": "system_object_types"
 						}]
 					}]
 				}]
 			}]
 		},
 		"views": [{
-			"id": "system_object_types",
+			"name": "system_object_types",
 			"display_name": "System object types",
-			"data_source": "system_object_types",
-			"query": "object_type == 'system_object'",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			}]
-		},
-		{
-			"id": "custom_object_types",
-			"display_name": "Custom Object Types",
-			"data_source": "system_object_types",
-			"query": "object_type == 'custom_object_type'",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			}]
-		},
-		{
-			"id": "objects",
-			"display_name": "Objects",
-			"data_source": "objects",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			},
-			{
-				"displayName": "Description",
-				"sourceName": "description"
-			}]
-		}]
-	},
-	{
-		"name": "custom_object_types",
-		"display_name": "Custom Object Types",
-		"layout": {
-			"rows": [{
-				"columns": [{
-					"size": 12,
-					"containers": [{
-						"tabs": [
-						{
-							"id": "custom_object_types",
-							"display_name": "Custom Object Types"
-						}],
-						"views": [{
-							"id": "custom_object_types",
-							"tab_id": "custom_object_types"
-						}]
-					}]
-				}]
-			}]
-		},
-		"views": [{
-			"id": "custom_object_types",
-			"display_name": "Custom Object Types",
-			"data_source": "custom_object_types",
-			"page_size": 5,
-			"fields": [{
-				"displayName": "Name",
-				"sourceName": "name"
-			},
-			{
-				"displayName": "Display name",
-				"sourceName": "display_name"
-			},
-			{
-				"displayName": "Description",
-				"sourceName": "description"
-			}]
-		}]
-	},
-	{
-		"name": "objects",
-		"display_name": "Objects",
-		"layout": {
-			"rows": [{
-				"columns": [{
-					"size": 12,
-					"containers": [{
-						"views": [{
-							"id": "objects",
-							"tab_id": "Objects"
-						}]
-					}]
-				}]
-			}]
-		},
-		"views": [{
-			"id": "objects",
-			"display_name": "Objects",
-			"data_source": "objects",
-			"page_size": 5,
+			"object_type": "system_object",
+			"query": "",
+			"page_size": 10,
 			"fields": [{
 				"displayName": "Name",
 				"sourceName": "name"
@@ -165,57 +40,30 @@ var modules = [{
 			}]
 		}]
 	}];
+	
+angular.module('myApp.settings', []).constant('appSettings', {serviceRootURL: 'http://127.0.0.1:8181'});
+
 // Declare app level module which depends on views, and components
 var module = angular.module('myApp', [
   'ngRoute',
   'viewhead',
   'datatables',
   'ui.bootstrap',
-  'myApp.system_object_types',
-  'myApp.custom_object_types',
-  'myApp.objects'
+  'myApp.settings',
+  'myApp.system_object_types'
 ]);
 
 var modalInstance = {};
 var object_type = '';
 var object_id = '';
-var object_data_source = '';
 
 module.run(function($rootScope){
 	$rootScope.getById = function(data, id){		
 		for (var i = 0; i < data.length; i++) {
-			if(data[i].id == id) return data[i];
+			if(data[i].name == id) return data[i];
 		}
 	}
 });
-
-
-/*
-module.run(function($rootScope){
-	$rootScope.openModal = function (object_type, object_id) {
-		var self = this;
-		
-		self.object_type = object_type;
-		self.object_id = object_id;
-		
-		modalInstance = $modal.open({
-		  template: '<form-view object_type="$resolve.object_type" object_id="$resolve.object_id"></grid-view>',
-		  resolve: {
-			object_type: function () {
-			  return self.object_type;
-			},
-			object_id: function () {
-			  return self.object_id;
-			}
-		  }
-		});
-		
-		modalInstance.result.then(function (data) {
-			alert(data);
-		});
-	}
-});
-*/
 
 
 
@@ -226,12 +74,12 @@ module.component('gridView', {
 		bindings: {
 			view: '='
 		},
-		controller: function (DTOptionsBuilder, DTColumnBuilder, $routeParams, $scope, $compile, $uibModal, $rootScope) {
+		controller: function (DTOptionsBuilder, DTColumnBuilder, $routeParams, $scope, $compile, $uibModal, $rootScope, appSettings) {
 						
 						var self = this;
 						
-						var serviceRootURL = 'https://calculatall-api.herokuapp.com';
-						//var serviceRootURL = 'http://127.0.0.1:8181';
+						var serviceRootURL = appSettings.serviceRootURL;
+
 						self.edit = edit;
 						self.delete = deleteRow;
 						self.dtInstance = {};
@@ -240,7 +88,7 @@ module.component('gridView', {
 							self.dtInstance = instance;
 						}
 	
-						self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + this.view.data_source + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
+						self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + this.view.object_type + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
 							.withPaginationType('full_numbers')
 							.withDisplayLength(this.view.page_size)
 							.withOption('createdRow', createdRow);
@@ -263,7 +111,6 @@ module.component('gridView', {
 							// Edit some data and call server to make changes...
 							$rootScope.object_type = object_type;
 							$rootScope.object_id = name;
-							$rootScope.object_data_source = this.view.data_source;
 							openModal();
 						}
 						function deleteRow(name) {
@@ -279,12 +126,35 @@ module.component('gridView', {
 						function openModal() {
 							
 							modalInstance = $uibModal.open({
-							  template: '<form-view></grid-view>',
+							  template: '<form-view></form-view>',
 							});
+							
+							//setModalMaxHeight('form-view');
 							
 							modalInstance.result.then(function (data) {
 								// Reload the data so that DT is refreshed
 								self.dtInstance.reloadData();
+							});
+						}
+						
+						function setModalMaxHeight(element) {
+							this.$element     = $(element);
+							this.$content     = this.$element.find('.modal-body');
+							var borderWidth   = this.$content.outerHeight() - this.$content.innerHeight();
+							var dialogMargin  = $(window).width() > 767 ? 60 : 20;
+							var contentHeight = $(window).height() - (dialogMargin + borderWidth);
+							var headerHeight  = this.$element.find('.modal-header').outerHeight() || 0;
+							var footerHeight  = this.$element.find('.modal-footer').outerHeight() || 0;
+							var maxHeight     = contentHeight - (headerHeight + footerHeight);
+
+							this.$content.css({
+							  'overflow': 'hidden'
+							});
+
+							this.$element
+							.find('.modal-body').css({
+							  'max-height': maxHeight,
+							  'overflow-y': 'auto'
 							});
 						}
 						
@@ -303,33 +173,13 @@ module.component('gridView', {
 module.component('formView', {
 		template: 
 			'<div class="modal-header">' +
-				'<h3 class="modal-title">Title goes here</h3>' +
+				'<h3 class="modal-title">{{data.display_name}}</h3>' +
 			'</div>' +
 			'<div class="modal-body">' +
 				'<div class="panel panel-default">' +
-					'<div class="panel-heading">{{data.display_name}}</div>' +
 					'<div class="panel-body">' +
-				
 						'<form name = "formView">' +
-							'<div ng-repeat="field in object_type.fields">' +
-					
-								'<div ng-switch on="field.data_type">' +
-									'<div class="animate-switch" ng-switch-when="string">' +
-										'<div class="form-group">' +
-											'<label>{{field.display_name}}:</label>' +
-											'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
-										'</div>' +
-									'</div>' +
-									'<div class="animate-switch" ng-switch-default>' +
-										'<label>{{field.display_name}}:</label>' +
-										'<uib-accordion close-others="true">' +
-											'<uib-accordion-group heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
-												'{{item.description}}' +
-											'</uib-accordion-group>' +
-										'</uib-accordion>' +
-									'</div>' +
-								'<div>' +
-							'</div>' +
+							'<form-fields objecttypename="object_type.name" dataitem="data"></form-fields>' +
 						'</form>' +
 					'</div>' +
 				'</div>' +
@@ -338,46 +188,233 @@ module.component('formView', {
 				'<button class="btn btn-primary" ng-click="ok()">OK</button>' +
 				'<button class="btn btn-warning" ng-click="cancel()">Cancel</button>' +
 			'</div>',
-		controller: function ($routeParams, $scope, $http, $rootScope) {
+		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
 						
 						var self = this;
 						
-						var serviceRootURL = 'https://calculatall-api.herokuapp.com';
-						//var serviceRootURL = 'http://127.0.0.1:8181';
+						var serviceRootURL = appSettings.serviceRootURL;
 						
 						$http({
-						  method: 'GET',
-						  url: serviceRootURL + '/' + $rootScope.object_data_source + '/' + $rootScope.object_id
+							method: 'GET',
+							url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id
 						}).then(function successCallback(response) {
-							$scope.data = response.data;
-							
-							$http({
-							  method: 'GET',
-							  url: serviceRootURL + '/system_object_types/' + $scope.data.object_type
-							}).then(function successCallback(response) {
-								$scope.object_type = response.data;
-								
+									$scope.data = response.data;
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/system_object/' + $scope.data.object_type
+										}).then(function successCallback(response) {
+													$scope.object_type = response.data;
+										}, function errorCallback(response) {
+											// called asynchronously if an error occurs
+											// or server returns response with an error status.
+										  });
 							  }, function errorCallback(response) {
 								// called asynchronously if an error occurs
 								// or server returns response with an error status.
 							  });
-						  }, function errorCallback(response) {
-							// called asynchronously if an error occurs
-							// or server returns response with an error status.
-						  });
-						  
-						  
+						 
+
 						$scope.getFieldValue = function (fieldName) {
 							return eval('data.' + fieldName);
 						};
 						
 						$scope.ok = function () {
-							modalInstance.close($scope.data.name);
+							$http({
+								method: 'PUT',
+								url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id,
+								headers: {
+								   'content-type':'application/json'
+								},
+								data: $scope.data
+							}).then(function successCallback(response) {
+								modalInstance.close($scope.data.name);
+							  }, function errorCallback(response) {
+								// called asynchronously if an error occurs
+								// or server returns response with an error status.
+							  });
 						};
 
 						$scope.cancel = function () {
 							modalInstance.dismiss('cancel');
 						};
+					}
+	});
+	
+module.component('formFields', {
+		template: 
+		'<div ng-repeat="field in object_type.fields">' +
+
+			'<div ng-switch on="field.data_type.object_type">' +
+				'<div class="animate-switch" ng-switch-when="string">' +
+					'<div class="form-group">' +
+						'<label>{{field.display_name}}</label>' +
+						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+					'</div>' +
+				'</div>' +
+				'<div class="animate-switch" ng-switch-when="integer">' +
+					'<div class="form-group">' +
+						'<label>{{field.display_name}}</label>' +
+						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+					'</div>' +
+				'</div>' +
+				'<div class="animate-switch" ng-switch-when="boolean">' +
+					'<div class="form-group">' +
+						'<label>{{field.display_name}}</label>&nbsp;&nbsp;' +
+						'<div class="btn-group">' +
+							'<label class="btn btn-primary" ng-model="data[field.name]" uib-btn-radio="true">Yes</label>' +
+							'<label class="btn btn-primary" ng-model="data[field.name]" uib-btn-radio="false">No</label>' +
+						'</div>' +
+					'</div>' +
+				'</div>' +
+				'<div class="animate-switch" ng-switch-default>' +
+					'<div ng-if="field.data_type.multiplicity == \'many\'">' +
+						'<p>' +
+							'<label>{{field.display_name}}</label> &nbsp;' +
+						'</p>' +
+					'</div>' +
+					
+					'<uib-accordion close-others="false">' +
+						'<uib-accordion-group ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
+							'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
+						'</uib-accordion-group>' +
+						'<uib-accordion-group ng-if="field.data_type.multiplicity == \'one\'" heading="{{field.display_name}}">' +
+							'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
+						'</uib-accordion-group>' +
+					'</uib-accordion>' +
+					
+					'<div ng-if="field.data_type.multiplicity == \'many\'">' +
+						'<p>' +
+							'<button class="btn" ng-click="addNew(field.name, field.data_type.object_type)">Add {{field.display_name}}</button>' +
+						'</p>' +
+					'</div>' +
+				'</div>' +
+				
+			'<div>',
+		bindings: {
+			objecttypename: '=',
+			dataitem: '='
+		},
+		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
+						
+						var self = this;
+						
+						var serviceRootURL = appSettings.serviceRootURL;
+						
+						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$http({
+								  method: 'GET',
+								  url: serviceRootURL + '/system_object/' + newValue
+								}).then(function successCallback(response) {
+											$scope.object_type = response.data;
+								  }, function errorCallback(response) {
+										alert(response);
+								  });
+								
+								objecttypenameWatch();
+							}
+						  });
+						
+						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
+						  function(newValue) {
+							if (newValue) {
+								$scope.data = newValue;
+								
+								dataitemWatch();
+							}
+						  });
+						 
+						$scope.getFieldValue = function (fieldName) {
+							return eval('data.' + fieldName);
+						};
+						
+						$scope.addNew = function (fieldName, objectTypeName) {
+							$http({
+								  method: 'GET',
+								  url: serviceRootURL + '/system_object'
+								}).then(function successCallback(response) {
+											var objectTypes = response.data;
+											var object = $scope.createNew(objectTypes, objectTypeName);
+											
+											if(self.dataitem[fieldName] == undefined)
+											{
+												self.dataitem[fieldName] = []; 
+											}
+											self.dataitem[fieldName].push(object);
+											
+								  }, function errorCallback(response) {
+										alert(response);
+								  });
+							
+						};
+						
+						$scope.createNew = function(objectTypes, objectTypeName)
+						{	
+							var object_type = $rootScope.getById(objectTypes, objectTypeName);
+							var result = {};
+							
+							for(var i = 0; i < object_type.fields.length; i ++)
+							{
+								var field = object_type.fields[i];
+								if(field.data_type.object_type == 'string')
+								{
+									if(field.data_type.multiplicity == 'one')
+									{
+										if(field.name == 'display_name')
+										{
+											result[field.name] = 'New ' + object_type.display_name;
+										}
+										else
+										{
+											result[field.name] = field.default ? field.default : '';
+										}
+									}
+									else if(field.data_type.multiplicity == 'many')
+									{
+										result[field.name] = [''];
+									}
+								}
+								else if(field.data_type.object_type == 'integer')
+								{
+									if(field.data_type.multiplicity == 'one')
+									{
+										result[field.name] = 0;	
+									}
+									else if(field.data_type.multiplicity == 'many')
+									{
+										result[field.name] = [0];
+									}
+								}
+								else if(field.data_type.object_type == 'boolean')
+								{
+									if(field.data_type.multiplicity == 'one')
+									{
+										result[field.name] = field.default ? field.default : false;
+									}
+									else if(field.data_type.multiplicity == 'many')
+									{
+										result[field.name] = [false];
+									}
+								}
+								else
+								{
+									var object = null;
+									if(field.required)
+									{
+										object = $scope.createNew(objectTypes, field.data_type.object_type);
+									}
+									
+									if(field.data_type.multiplicity == 'one')
+									{
+										result[field.name] = object;
+									}
+								}
+							}
+							
+							return result;
+
+						}
 					}
 	});
 
