@@ -39,6 +39,46 @@ var pages = [{
 				"sourceName": "description"
 			}]
 		}]
+	},
+	{
+		"name": "validation_rules",
+		"display_name": "Validation rules",
+		"layout": {
+			"rows": [{
+				"columns": [{
+					"size": 12,
+					"containers": [{
+						"tabs": [{
+							"name": "validation_rules",
+							"display_name": "Validation rules"
+						}],
+						"views": [{
+							"view": "validation_rules",
+							"tab": "validation_rules"
+						}]
+					}]
+				}]
+			}]
+		},
+		"views": [{
+			"name": "validation_rules",
+			"display_name": "Validation rules",
+			"object_type": "validation_rule_definition",
+			"query": "",
+			"page_size": 10,
+			"fields": [{
+				"displayName": "Name",
+				"sourceName": "name"
+			},
+			{
+				"displayName": "Display name",
+				"sourceName": "display_name"
+			},
+			{
+				"displayName": "Description",
+				"sourceName": "description"
+			}]
+		}]
 	}];
 	
 angular.module('myApp.settings', []).constant('appSettings', {serviceRootURL: 'http://127.0.0.1:8181'});
@@ -127,8 +167,12 @@ module.component('gridView', {
 							
 							modalInstance = $uibModal.open({
 							  template: '<form-view></form-view>',
+							  windowClass: 'right fade'
 							});
 							
+							modalInstance.rendered.then(function(){
+								setModalMaxHeight('form-view');
+							});
 							//setModalMaxHeight('form-view');
 							
 							modalInstance.result.then(function (data) {
@@ -138,20 +182,20 @@ module.component('gridView', {
 						}
 						
 						function setModalMaxHeight(element) {
-							this.$element     = $(element);
-							this.$content     = this.$element.find('.modal-body');
-							var borderWidth   = this.$content.outerHeight() - this.$content.innerHeight();
+							var element     = $(element);
+							var content     = element.find('.modal-body');
+							var borderWidth   = content.outerHeight() - content.innerHeight();
 							var dialogMargin  = $(window).width() > 767 ? 60 : 20;
 							var contentHeight = $(window).height() - (dialogMargin + borderWidth);
-							var headerHeight  = this.$element.find('.modal-header').outerHeight() || 0;
-							var footerHeight  = this.$element.find('.modal-footer').outerHeight() || 0;
+							var headerHeight  = element.find('.modal-header').outerHeight() || 0;
+							var footerHeight  = element.find('.modal-footer').outerHeight() || 0;
 							var maxHeight     = contentHeight - (headerHeight + footerHeight);
 
-							this.$content.css({
+							content.css({
 							  'overflow': 'hidden'
 							});
 
-							this.$element
+							element
 							.find('.modal-body').css({
 							  'max-height': maxHeight,
 							  'overflow-y': 'auto'
@@ -246,13 +290,21 @@ module.component('formFields', {
 
 			'<div ng-switch on="field.data_type.object_type">' +
 				'<div class="animate-switch" ng-switch-when="string">' +
-					'<div class="form-group">' +
+					'<div ng-if="field.source" class="form-group">' +
+						'<label>{{field.display_name}}</label>' +
+						'<select class="form-control" ng-model="data[field.name]" ng-options="o as o for o in field.source"></select>' +
+					'</div>' +
+					'<div ng-if="!field.source" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
 					'</div>' +
 				'</div>' +
 				'<div class="animate-switch" ng-switch-when="integer">' +
-					'<div class="form-group">' +
+					'<div ng-if="field.source" class="form-group">' +
+						'<label>{{field.display_name}}</label>' +
+						'<select class="form-control" ng-model="data[field.name]" ng-options="o as o for o in field.source"></select>' +
+					'</div>' +
+					'<div ng-if="!field.source" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
 					'</div>' +
@@ -272,15 +324,26 @@ module.component('formFields', {
 							'<label>{{field.display_name}}</label> &nbsp;' +
 						'</p>' +
 					'</div>' +
-					
-					'<uib-accordion close-others="false">' +
-						'<uib-accordion-group ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
-							'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
-						'</uib-accordion-group>' +
-						'<uib-accordion-group ng-if="field.data_type.multiplicity == \'one\'" heading="{{field.display_name}}">' +
-							'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
-						'</uib-accordion-group>' +
-					'</uib-accordion>' +
+					'<div ng-if="data[field.name]">' +
+						'<uib-accordion close-others="true">' +
+							/*
+							'<uib-accordion-group ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
+								'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
+							'</uib-accordion-group>' +
+							'<uib-accordion-group ng-if="field.data_type.multiplicity == \'one\'" heading="{{field.display_name}}">' +
+								'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
+							'</uib-accordion-group>' +
+							*/
+							'<div uib-accordion-group ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]" ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
+								'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
+							'</div>' +
+							'<div uib-accordion-group ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]" ng-if="field.data_type.multiplicity == \'one\'" heading="{{field.display_name}}">' +
+								'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
+							'</div>' +
+							
+							
+						'</uib-accordion>' +
+					'</div>' +
 					
 					'<div ng-if="field.data_type.multiplicity == \'many\'">' +
 						'<p>' +
