@@ -88,6 +88,9 @@ var module = angular.module('myApp', [
   'ngRoute',
   'viewhead',
   'datatables',
+  //'datatables.bootstrap',
+  //'datatables.colvis',
+  'datatables.buttons',
   'ui.bootstrap',
   'myApp.settings',
   'myApp.system_object_types'
@@ -102,8 +105,85 @@ module.run(function($rootScope){
 		for (var i = 0; i < data.length; i++) {
 			if(data[i].name == id) return data[i];
 		}
-	}
+	};
+	
+	$rootScope.createNewObject = function(objectTypes, objectTypeName){	
+		var object_type = $rootScope.getById(objectTypes, objectTypeName);
+		var result = {};
+		
+		for(var i = 0; i < object_type.fields.length; i ++)
+		{
+			var field = object_type.fields[i];
+			if(field.data_type.object_type == 'string')
+			{
+				if(field.data_type.multiplicity == 'one')
+				{
+					if(field.name == 'display_name')
+					{
+						result[field.name] = 'New ' + object_type.display_name;
+					}
+					else if(field.name == 'object_type')
+					{
+						result[field.name] = object_type.name;
+					}
+					else
+					{
+						result[field.name] = field.default ? field.default : '';
+					}
+				}
+				else if(field.data_type.multiplicity == 'many')
+				{
+					result[field.name] = [''];
+				}
+			}
+			else if(field.data_type.object_type == 'integer')
+			{
+				if(field.data_type.multiplicity == 'one')
+				{
+					result[field.name] = 0;	
+				}
+				else if(field.data_type.multiplicity == 'many')
+				{
+					result[field.name] = [0];
+				}
+			}
+			else if(field.data_type.object_type == 'boolean')
+			{
+				if(field.data_type.multiplicity == 'one')
+				{
+					result[field.name] = field.default ? field.default : false;
+				}
+				else if(field.data_type.multiplicity == 'many')
+				{
+					result[field.name] = [false];
+				}
+			}
+			else
+			{
+				var object = null;
+				if(field.required)
+				{
+					if(field.data_type.multiplicity == 'one')
+					{
+						object = $rootScope.createNewObject(objectTypes, field.data_type.object_type);
+						result[field.name] = object;
+					}
+					else if(field.data_type.multiplicity == 'many')
+					{
+						result[field.name] = [];
+					}
+				}
+				
+				
+			}
+		}
+		
+		return result;
+
+	};
 });
+
+
 
 
 
@@ -131,8 +211,22 @@ module.component('gridView', {
 						self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + this.view.object_type + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
 							.withPaginationType('full_numbers')
 							.withDisplayLength(this.view.page_size)
-							.withOption('createdRow', createdRow);
-						self.dtColumns = [];
+							.withOption('createdRow', createdRow)
+							.withOption('responsive', true)
+							.withOption('colReorder', true)
+							.withOption('dom', 'C<"clear">lfrtip')
+							//Look at styling, it's too dark at the moment
+							//.withOption('select', true)
+							.withButtons([{
+									text: 'Add new',
+									key: '1',
+									action: function (e, dt, node, config) {
+												add(self.view.object_type);
+											}
+								}
+							]);
+
+							self.dtColumns = [];
 
 						
 						for (var i = 0; i < this.view.fields.length; i++) {
@@ -146,13 +240,17 @@ module.component('gridView', {
 						self.dtColumns.push(DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
 							.renderWith(actionsHtml));
 						
+						function add(object_type) {
+							$rootScope.object_type = object_type;
+							openModal();
+						}
+						
 						function edit(name, object_type) {
-							self.message = 'You are trying to edit the row: ' + name;
-							// Edit some data and call server to make changes...
 							$rootScope.object_type = object_type;
 							$rootScope.object_id = name;
 							openModal();
 						}
+						
 						function deleteRow(name) {
 							// Delete some data and call server to make changes...
 							// Then reload the data so that DT is refreshed
@@ -178,6 +276,11 @@ module.component('gridView', {
 							modalInstance.result.then(function (data) {
 								// Reload the data so that DT is refreshed
 								self.dtInstance.reloadData();
+							});
+							
+							modalInstance.closed.then(function (data) {
+								$rootScope.object_type = '';
+								$rootScope.object_id = '';
 							});
 						}
 						
@@ -240,42 +343,78 @@ module.component('formView', {
 						
 						$http({
 							method: 'GET',
-							url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id
-						}).then(function successCallback(response) {
-									$scope.data = response.data;
-									$http({
-										method: 'GET',
-										url: serviceRootURL + '/system_object/' + $scope.data.object_type
-										}).then(function successCallback(response) {
-													$scope.object_type = response.data;
-										}, function errorCallback(response) {
-											// called asynchronously if an error occurs
-											// or server returns response with an error status.
-										  });
-							  }, function errorCallback(response) {
+							url: serviceRootURL + '/system_object/' + $rootScope.object_type
+							}).then(function successCallback(response) {
+										$scope.object_type = response.data;
+							}, function errorCallback(response) {
 								// called asynchronously if an error occurs
 								// or server returns response with an error status.
-							  });
-						 
+							  }); 
+						
+						if($rootScope.object_id != undefined && $rootScope.object_id != '')
+						{
+							$http({
+								method: 'GET',
+								url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id
+							}).then(function successCallback(response) {
+										$scope.data = response.data;
+								}, function errorCallback(response) {
+									// called asynchronously if an error occurs
+									// or server returns response with an error status.
+								});
+						}
+						else
+						{
+							$http({
+								 method: 'GET',
+								 url: serviceRootURL + '/system_object'
+							}).then(function successCallback(response) {
+										var objectTypes = response.data;
+										var object = $rootScope.createNewObject(objectTypes, $rootScope.object_type);
+										
+										$scope.data = object;
+								}, function errorCallback(response) {
+										alert(response);
+								});
+						}
 
 						$scope.getFieldValue = function (fieldName) {
 							return eval('data.' + fieldName);
 						};
 						
 						$scope.ok = function () {
-							$http({
-								method: 'PUT',
-								url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id,
-								headers: {
-								   'content-type':'application/json'
-								},
-								data: $scope.data
-							}).then(function successCallback(response) {
-								modalInstance.close($scope.data.name);
-							  }, function errorCallback(response) {
-								// called asynchronously if an error occurs
-								// or server returns response with an error status.
-							  });
+							if($rootScope.object_id != undefined && $rootScope.object_id != '')
+							{
+								$http({
+									method: 'PUT',
+									url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id,
+									headers: {
+									   'content-type':'application/json'
+									},
+									data: $scope.data
+								}).then(function successCallback(response) {
+									modalInstance.close($scope.data.name);
+								  }, function errorCallback(response) {
+									// called asynchronously if an error occurs
+									// or server returns response with an error status.
+								  });
+							}
+							else
+							{
+								$http({
+									method: 'POST',
+									url: serviceRootURL + '/' + $rootScope.object_type,
+									headers: {
+									   'content-type':'application/json'
+									},
+									data: $scope.data
+								}).then(function successCallback(response) {
+									modalInstance.close($scope.data.name);
+								  }, function errorCallback(response) {
+									// called asynchronously if an error occurs
+									// or server returns response with an error status.
+								  });
+							}
 						};
 
 						$scope.cancel = function () {
@@ -286,7 +425,7 @@ module.component('formView', {
 	
 module.component('formFields', {
 		template: 
-		'<div ng-repeat="field in object_type.fields">' +
+		'<div ng-if="data" ng-repeat="field in object_type.fields">' +
 
 			'<div ng-switch on="field.data_type.object_type">' +
 				'<div class="animate-switch" ng-switch-when="string">' +
@@ -326,23 +465,17 @@ module.component('formFields', {
 					'</div>' +
 					'<div ng-if="data[field.name]">' +
 						'<uib-accordion close-others="true">' +
-							/*
-							'<uib-accordion-group ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
-								'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
-							'</uib-accordion-group>' +
-							'<uib-accordion-group ng-if="field.data_type.multiplicity == \'one\'" heading="{{field.display_name}}">' +
-								'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
-							'</uib-accordion-group>' +
-							*/
-							'<div uib-accordion-group ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]" ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]">' +
+							'<div uib-accordion-group ng-if="field.data_type.multiplicity == \'many\'" heading="{{item.display_name}}" ng-repeat="item in data[field.name]" ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]">' +
 								'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
 							'</div>' +
-							'<div uib-accordion-group ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]" ng-if="field.data_type.multiplicity == \'one\'" heading="{{field.display_name}}">' +
+							'<div uib-accordion-group ng-if="field.data_type.multiplicity == \'one\' && field.data_type.association_type == \'embed\'" heading="{{field.display_name}}" ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]">' +
 								'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
 							'</div>' +
-							
-							
 						'</uib-accordion>' +
+						'<div ng-if="field.data_type.multiplicity == \'one\' && field.data_type.association_type == \'link\'" class="form-group">' +
+							'<label>{{field.display_name}}</label>' +
+							'<lookup-field objecttypename="field.data_type.object_type" id="data[field.name]" dataitem="data" fieldname="field.name"></lookup-field>' +
+						'</div>' +
 					'</div>' +
 					
 					'<div ng-if="field.data_type.multiplicity == \'many\'">' +
@@ -363,6 +496,19 @@ module.component('formFields', {
 						
 						var serviceRootURL = appSettings.serviceRootURL;
 						
+						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
+						  function(newValue) {
+							if (newValue) {
+								if(newValue != '')
+								{
+									$scope.data = newValue;
+								}
+								
+								$scope.synchBindings();
+								dataitemWatch();
+							}
+						  });
+						
 						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
 						  function(newValue) {
 							if (angular.isString(newValue)) {
@@ -371,23 +517,35 @@ module.component('formFields', {
 								  url: serviceRootURL + '/system_object/' + newValue
 								}).then(function successCallback(response) {
 											$scope.object_type = response.data;
+											
+											$scope.synchBindings();
+											
 								  }, function errorCallback(response) {
 										alert(response);
 								  });
-								
+								 
 								objecttypenameWatch();
 							}
 						  });
-						
-						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
-						  function(newValue) {
-							if (newValue) {
-								$scope.data = newValue;
-								
-								dataitemWatch();
-							}
-						  });
 						 
+						$scope.synchBindings = function () {
+						
+							if(angular.isString(self.objecttypename) && self.dataitem == '')
+							{
+								//objecttypename was set to a valid value and dataitem was set to null
+								$http({
+								  method: 'GET',
+								  url: serviceRootURL + '/system_object'
+								}).then(function successCallback(response) {
+											var objectTypes = response.data;
+											var object = $rootScope.createNewObject(objectTypes, self.objecttypename);
+											$scope.data = object;
+								  }, function errorCallback(response) {
+										alert(response);
+								  });
+							}
+						};
+						
 						$scope.getFieldValue = function (fieldName) {
 							return eval('data.' + fieldName);
 						};
@@ -398,86 +556,97 @@ module.component('formFields', {
 								  url: serviceRootURL + '/system_object'
 								}).then(function successCallback(response) {
 											var objectTypes = response.data;
-											var object = $scope.createNew(objectTypes, objectTypeName);
+											var object = $rootScope.createNewObject(objectTypes, objectTypeName);
 											
-											if(self.dataitem[fieldName] == undefined)
+											if($scope.data[fieldName] == undefined)
 											{
-												self.dataitem[fieldName] = []; 
+												$scope.data[fieldName] = []; 
 											}
-											self.dataitem[fieldName].push(object);
+											$scope.data[fieldName].push(object);
 											
 								  }, function errorCallback(response) {
 										alert(response);
 								  });
 							
 						};
+					}
+	});
+	
+module.component('lookupField', {
+		template: 
+			//'<select class="form-control" ng-model="data[field]" ng-options="item as item.display_name for item in source track by item.name"></select>',
+			'<select class="form-control" ng-model="data[field]" ng-options="item.name as item.display_name for item in source"></select>',
+		bindings: {
+			objecttypename: '=',
+			id: '=',
+			dataitem: '=',
+			fieldname: '='
+		},
+		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
 						
-						$scope.createNew = function(objectTypes, objectTypeName)
-						{	
-							var object_type = $rootScope.getById(objectTypes, objectTypeName);
-							var result = {};
-							
-							for(var i = 0; i < object_type.fields.length; i ++)
-							{
-								var field = object_type.fields[i];
-								if(field.data_type.object_type == 'string')
-								{
-									if(field.data_type.multiplicity == 'one')
-									{
-										if(field.name == 'display_name')
-										{
-											result[field.name] = 'New ' + object_type.display_name;
-										}
-										else
-										{
-											result[field.name] = field.default ? field.default : '';
-										}
-									}
-									else if(field.data_type.multiplicity == 'many')
-									{
-										result[field.name] = [''];
-									}
-								}
-								else if(field.data_type.object_type == 'integer')
-								{
-									if(field.data_type.multiplicity == 'one')
-									{
-										result[field.name] = 0;	
-									}
-									else if(field.data_type.multiplicity == 'many')
-									{
-										result[field.name] = [0];
-									}
-								}
-								else if(field.data_type.object_type == 'boolean')
-								{
-									if(field.data_type.multiplicity == 'one')
-									{
-										result[field.name] = field.default ? field.default : false;
-									}
-									else if(field.data_type.multiplicity == 'many')
-									{
-										result[field.name] = [false];
-									}
-								}
-								else
-								{
-									var object = null;
-									if(field.required)
-									{
-										object = $scope.createNew(objectTypes, field.data_type.object_type);
-									}
-									
-									if(field.data_type.multiplicity == 'one')
-									{
-										result[field.name] = object;
-									}
-								}
+						var self = this;
+						
+						var serviceRootURL = appSettings.serviceRootURL;
+						
+						$scope.source = null;
+						
+						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
+						  function(newValue) {
+							if (newValue) {
+								$scope.synchBindings();
+								
+								dataitemWatch();
 							}
-							
-							return result;
+						  });
+						  
+						var fieldnameWatch = $scope.$watch('$ctrl.fieldname',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$scope.synchBindings();
 
-						}
+								fieldnameWatch();
+							}
+						  });
+						  
+						var idWatch = $scope.$watch('$ctrl.id',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$scope.synchBindings();
+
+								idWatch();
+							}
+						  });
+						
+						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$scope.synchBindings();	
+								
+								objecttypenameWatch();
+							}
+						  });
+						
+						$scope.bindingsSynched = false;
+						
+						$scope.synchBindings = function () {
+						
+							if(angular.isString(self.objecttypename) && angular.isString(self.id) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
+							{
+								$scope.data = self.dataitem;
+								$scope.field = self.fieldname;
+								
+								$http({
+								  method: 'GET',
+								  url: serviceRootURL + '/' + self.objecttypename
+								}).then(function successCallback(response) {
+											$scope.source = response.data;
+								  }, function errorCallback(response) {
+										alert(response);
+								  });
+								
+								$scope.bindingsSynched = true;
+							}
+						};
 					}
 	});
 

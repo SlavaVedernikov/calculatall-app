@@ -18,27 +18,26 @@
     <!-- MetisMenu CSS -->
     <link href="bower_components/metisMenu/dist/metisMenu.min.css" rel="stylesheet">
 
-    <!-- Custom CSS -->
-    <link href="dist/css/sb-admin-2.css" rel="stylesheet">
-
     <!-- Custom Fonts -->
     <link href="bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
 	
-	<link href="bower_components/datatables/media/css/jquery.dataTables.css" rel="stylesheet">
-    <link href="bower_components/angular-datatables/css/angular-datatables.min.css" rel="stylesheet">
+	<link href="bower_components/datatables/media/css/jquery.dataTables.css" rel="stylesheet" type="text/css">
+	<link href="bower_components/datatables-responsive/css/responsive.dataTables.scss" rel="stylesheet" type="text/x-scss">
+	<link href="bower_components/datatables/media/css/dataTables.colVis.css" rel="stylesheet" type="text/css">
+	<link href="https://cdn.datatables.net/colreorder/1.3.2/css/colReorder.dataTables.min.css" rel="stylesheet" type="text/css">
+    <link href="bower_components/angular-datatables/css/angular-datatables.min.css" rel="stylesheet" type="text/css">
+	<link href="https://cdn.datatables.net/select/1.2.0/css/select.dataTables.min.css" rel="stylesheet" type="text/css">
+	<link href="bower_components/datatables/media/css/buttons.dataTables.css" rel="stylesheet" type="text/css">
 	
-	<!-- <link href="bower_components/datatables-responsive/css/responsive.dataTables.scss" rel="stylesheet">-->
-	
-	
-	
-	
-	<link href="bower_components/html5-boilerplate/dist/css/normalize.css" rel="stylesheet">
-	<link rel="stylesheet" href="bower_components/html5-boilerplate/dist/css/normalize.css">
-	<link rel="stylesheet" href="bower_components/html5-boilerplate/dist/css/main.css">
-	<link rel="stylesheet" href="components/modal-sidebar/modal-sidebar.css">
-	<script src="bower_components/html5-boilerplate/dist/js/vendor/modernizr-2.8.3.min.js"></script>
+	<link rel="stylesheet" href="bower_components/html5-boilerplate/dist/css/normalize.css" type="text/css">
+	<link rel="stylesheet" href="bower_components/html5-boilerplate/dist/css/normalize.css" type="text/css">
+	<link rel="stylesheet" href="bower_components/html5-boilerplate/dist/css/main.css" type="text/css">
+	<link rel="stylesheet" href="components/modal-sidebar/modal-sidebar.css" type="text/css">
 	
 	<link rel="stylesheet" href="app.css">
+	
+	<!-- Custom CSS -->
+    <link href="dist/css/sb-admin-2.css" rel="stylesheet">
 </head>
 <body>
 
@@ -324,12 +323,19 @@
   <!-- In production use:
   <script src="//ajax.googleapis.com/ajax/libs/angularjs/x.x.x/angular.min.js"></script>
   -->
+	<script src="bower_components/html5-boilerplate/dist/js/vendor/modernizr-2.8.3.min.js"></script>
   <!-- jQuery -->
     <script data-require="jquery@2.2.0" data-semver="2.2.0" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
 	
 	<script src="bower_components/datatables/media/js/jquery.dataTables.js"></script>
 	<script src="bower_components/datatables/media/js/dataTables.jqueryui.js"></script>
 	<script src="bower_components/datatables/media/js/dataTables.bootstrap.js"></script>
+	<script src="bower_components/datatables/media/js/dataTables.buttons.js"></script>
+	<script src="https://cdn.datatables.net/colreorder/1.3.2/js/dataTables.colReorder.min.js"></script>
+	<script src="bower_components/datatables-responsive/js/dataTables.responsive.js"></script>
+	<script src="bower_components/datatables/media/js/dataTables.colVis.js"></script>
+	<script src="https://cdn.datatables.net/select/1.2.0/js/dataTables.select.min.js"></script>
+
 	
 	
     <script data-require="angularjs@1.5.5" data-semver="1.5.5" src="https://code.angularjs.org/1.5.5/angular.js"></script>
@@ -338,6 +344,7 @@
     <!--<script data-require="ui-bootstrap@1.3.3" data-semver="1.3.3" src="https://cdn.rawgit.com/angular-ui/bootstrap/gh-pages/ui-bootstrap-tpls-1.3.3.js"></script>-->
 	<script src="//angular-ui.github.io/bootstrap/ui-bootstrap-tpls-2.0.1.js"></script>
 	<script src="bower_components/angular-datatables/angular-datatables.js"></script>
+	<script src="bower_components/angular-datatables/plugins/buttons/angular-datatables.buttons.js"></script>
     
 	
 	<!--
@@ -371,10 +378,6 @@
 	
 	<!--<script type="text/javascript" src="http://www.w3resource.com/JSON/json.js"></script>-->  
 	<script type="text/javascript" src="http://www.w3resource.com/JSON/jsonpath.js"></script> 
-	
-	
-	
-	<script src="bower_components/datatables-responsive/js/dataTables.responsive.js"></script>
 	
 	<!-- Custom Theme JavaScript -->
     <script src="dist/js/sb-admin-2.js"></script>
