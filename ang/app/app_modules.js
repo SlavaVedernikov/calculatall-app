@@ -1,5 +1,14 @@
 'use strict';
-
+/*
+$http({
+	method: 'GET',
+	url: serviceRootURL + '/page'
+	}).then(function successCallback(response) {
+			$scope.source = response.data;
+	}, function errorCallback(response) {
+		alert(response);
+	});
+								  
 for (var i = 0; i < pages.length; i++) {
     var moduleName  = pages[i].name;
 	var moduleDisplayName = pages[i].display_name;
@@ -59,3 +68,4 @@ for (var i = 0; i < pages.length; i++) {
 		self.module = result[0];
 	});	
 }
+*/
