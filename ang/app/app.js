@@ -35,8 +35,18 @@ module.run(function($rootScope, appSettings){
 		}
 	};
 	
-	$rootScope.getAPIRootURL = function(){		
-		return appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/' + $rootScope.tenant;
+	$rootScope.getAPIRootURL = function(){	
+		var result = '';
+		
+		if(tenant != '*')
+		{
+			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/' + $rootScope.tenant;
+		}
+		else
+		{
+			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/*';
+		}
+		return result;
 	};
 	
 	$rootScope.createNewObject = function(objectTypes, objectTypeName){	
@@ -139,7 +149,8 @@ module.component('navigationView', {
                             '<!-- /input-group -->' +
                         '</li>' +
 						'<li ng-if="pages" ng-repeat="page in pages">' +
-							'<a href="{{\'#!/\' + owner + \'/\' + application + \'/\' + tenant + \'/\' + page.id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
+							'<a ng-if="tenant != \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/\' + tenant + \'/\' + page.id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
+							'<a ng-if="tenant == \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/*/\' + page.id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
 						'</li>' +
                     '</ul>' +
                '</div>' +
@@ -697,6 +708,7 @@ module.config(['$locationProvider', '$routeProvider', function($locationProvider
 
 	
 angular.module('myApp.moduleLoader', ['ngRoute'])
+	
 	.config(['$routeProvider', function($routeProvider) {
 		$routeProvider.when('/:owner/:application/:tenant', {
 			templateUrl: 'page.html',
@@ -720,6 +732,40 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 				$rootScope.owner = $routeParams.owner;
 				$rootScope.application = $routeParams.application;
 				$rootScope.tenant = $routeParams.tenant;
+				
+				var serviceRootURL = $rootScope.getAPIRootURL();
+				
+				$http({
+					method: 'GET',
+					url: serviceRootURL + '/page/' + $routeParams.page
+					}).then(function successCallback(response) {
+							$scope.page = response.data;
+					}, function errorCallback(response) {
+						alert(response);
+					});
+			}
+	  });
+	  
+	  $routeProvider.when('/:owner/:application/*', {
+			templateUrl: 'page.html',
+			controller: function($scope, $routeParams, $http, $rootScope, appSettings) {
+				var self = this;
+				
+				$scope.page = null;
+				$rootScope.owner = $routeParams.owner;
+				$rootScope.application = $routeParams.application;
+				
+			}
+	  });
+	  
+		$routeProvider.when('/:owner/:application/*/:page', {
+		templateUrl: 'page.html',
+			controller: function($scope, $routeParams, $http, $rootScope, appSettings) {
+				var self = this;
+				
+				$scope.page = null;
+				$rootScope.owner = $routeParams.owner;
+				$rootScope.application = $routeParams.application;
 				
 				var serviceRootURL = $rootScope.getAPIRootURL();
 				
