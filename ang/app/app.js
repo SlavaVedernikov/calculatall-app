@@ -49,8 +49,8 @@ module.run(function($rootScope, appSettings){
 		return result;
 	};
 	
-	$rootScope.createNewObject = function(objectTypes, objectTypeName){	
-		var object_type = $rootScope.getByName(objectTypes, objectTypeName);
+	$rootScope.createNewObject = function(objectTypes, objectType){	
+		var object_type = $rootScope.getById(objectTypes, objectType);
 		var result = {};
 		
 		for(var i = 0; i < object_type.fields.length; i ++)
@@ -193,42 +193,57 @@ module.component('gridView', {
 						self.edit = edit;
 						self.delete = deleteRow;
 						self.dtInstance = {};
+						self.dtOptions = [];
+						self.dtColumns = [];
 						
 						self.dtIntanceCallback = function (instance) {
 							self.dtInstance = instance;
 						}
-	
-						self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + this.view.source_object_type + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
-							.withPaginationType('full_numbers')
-							.withDisplayLength(this.view.page_size)
-							.withOption('createdRow', createdRow)
-							.withOption('responsive', true)
-							.withOption('colReorder', true)
-							.withOption('dom', 'C<"clear">lfrtip')
-							//Look at styling, it's too dark at the moment
-							//.withOption('select', true)
-							.withButtons([{
-									text: 'Add new',
-									key: '1',
-									action: function (e, dt, node, config) {
-												add(self.view.source_object_type);
+						
+						$http({
+						method: 'GET',
+						url: serviceRootURL + '/object_types/' + this.view.source_object_type
+						}).then(function successCallback(response) {
+									var object_type = response.data;
+									
+									self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + object_type.name + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
+										.withPaginationType('full_numbers')
+										.withDisplayLength(this.view.page_size)
+										.withOption('createdRow', createdRow)
+										.withOption('responsive', true)
+										.withOption('colReorder', true)
+										.withOption('dom', 'C<"clear">lfrtip')
+										//Look at styling, it's too dark at the moment
+										//.withOption('select', true)
+										.withButtons([{
+												text: 'Add new',
+												key: '1',
+												action: function (e, dt, node, config) {
+															add(self.view.source_object_type);
+														}
 											}
-								}
-							]);
+										]);
 
-							self.dtColumns = [];
+										self.dtColumns = [];
 
+									
+									for (var i = 0; i < this.view.fields.length; i++) {
+										var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_name)
+											.withTitle(this.view.fields[i].display_name)
+											.withOption('defaultContent', 'n/a');
+
+										self.dtColumns.push(obj);
+									}
+									
+									self.dtColumns.push(DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
+										.renderWith(actionsHtml));
+										
+									self.dtInstance.reloadData();
+						}, function errorCallback(response) {
+							alert(response);
+						  }); 
+							  
 						
-						for (var i = 0; i < this.view.fields.length; i++) {
-							var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_name)
-								.withTitle(this.view.fields[i].display_name)
-								.withOption('defaultContent', 'n/a');
-
-							self.dtColumns.push(obj);
-						}
-						
-						self.dtColumns.push(DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
-							.renderWith(actionsHtml));
 						
 						function add(object_type) {
 							$rootScope.object_type = object_type;
@@ -246,13 +261,24 @@ module.component('gridView', {
 							var serviceRootURL = $rootScope.getAPIRootURL();
 							
 							$http({
-								method: 'DELETE',
-								url: serviceRootURL + '/' + object_type + '/' + id,
+							method: 'GET',
+							url: serviceRootURL + '/object_types/' + $rootScope.object_type
 							}).then(function successCallback(response) {
-									self.dtInstance.reloadData();
-							  }, function errorCallback(response) {
-									alert(response);
-							  });
+										var object_type = response.data;
+										
+										$http({
+											method: 'DELETE',
+											url: serviceRootURL + '/' + object_type.name + '/' + id,
+										}).then(function successCallback(response) {
+												self.dtInstance.reloadData();
+										  }, function errorCallback(response) {
+												alert(response);
+										  });
+							}, function errorCallback(response) {
+								// called asynchronously if an error occurs
+								// or server returns response with an error status.
+							  }); 
+							
 						}
 						
 						function createdRow(row, data, dataIndex) {
@@ -325,7 +351,7 @@ module.component('formView', {
 				'<div class="panel panel-default">' +
 					'<div class="panel-body">' +
 						'<form name = "formView">' +
-							'<form-fields objecttypename="object_type.name" dataitem="data"></form-fields>' +
+							'<form-fields objecttypename="object_type._id" dataitem="data"></form-fields>' +
 						'</form>' +
 					'</div>' +
 				'</div>' +
@@ -342,78 +368,88 @@ module.component('formView', {
 						
 						$http({
 							method: 'GET',
-							url: serviceRootURL + '/object_types/?query=@.name==\'' + $rootScope.object_type + '\''
+							url: serviceRootURL + '/object_types/' + $rootScope.object_type
 							}).then(function successCallback(response) {
-										$scope.object_type = response.data[0];
+										$scope.object_type = response.data;
+										
+										if($rootScope.object_id != undefined && $rootScope.object_id != '')
+										{
+											$http({
+												method: 'GET',
+												url: serviceRootURL + '/' + $scope.object_type.name + '/' + $rootScope.object_id
+											}).then(function successCallback(response) {
+														$scope.data = response.data;
+												}, function errorCallback(response) {
+													// called asynchronously if an error occurs
+													// or server returns response with an error status.
+												});
+										}
+										else
+										{
+											$http({
+												 method: 'GET',
+												 url: serviceRootURL + '/object_types'
+											}).then(function successCallback(response) {
+														var objectTypes = response.data;
+														var object = $rootScope.createNewObject(objectTypes, $rootScope.object_type);
+														
+														$scope.data = object;
+												}, function errorCallback(response) {
+														alert(response);
+												});
+										}
 							}, function errorCallback(response) {
 								// called asynchronously if an error occurs
 								// or server returns response with an error status.
 							  }); 
-						
-						if($rootScope.object_id != undefined && $rootScope.object_id != '')
-						{
-							$http({
-								method: 'GET',
-								url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id
-							}).then(function successCallback(response) {
-										$scope.data = response.data;
-								}, function errorCallback(response) {
-									// called asynchronously if an error occurs
-									// or server returns response with an error status.
-								});
-						}
-						else
-						{
-							$http({
-								 method: 'GET',
-								 url: serviceRootURL + '/object_types'
-							}).then(function successCallback(response) {
-										var objectTypes = response.data;
-										var object = $rootScope.createNewObject(objectTypes, $rootScope.object_type);
-										
-										$scope.data = object;
-								}, function errorCallback(response) {
-										alert(response);
-								});
-						}
 
 						$scope.getFieldValue = function (fieldName) {
 							return eval('data.' + fieldName);
 						};
 						
 						$scope.ok = function () {
-							if($rootScope.object_id != undefined && $rootScope.object_id != '')
-							{
-								$http({
-									method: 'PUT',
-									url: serviceRootURL + '/' + $rootScope.object_type + '/' + $rootScope.object_id,
-									headers: {
-									   'content-type':'application/json'
-									},
-									data: $scope.data
-								}).then(function successCallback(response) {
-									modalInstance.close($scope.data._id);
-								  }, function errorCallback(response) {
-									// called asynchronously if an error occurs
-									// or server returns response with an error status.
-								  });
-							}
-							else
-							{
-								$http({
-									method: 'POST',
-									url: serviceRootURL + '/' + $rootScope.object_type,
-									headers: {
-									   'content-type':'application/json'
-									},
-									data: $scope.data
-								}).then(function successCallback(response) {
-									modalInstance.close($scope.data._id);
-								  }, function errorCallback(response) {
-									// called asynchronously if an error occurs
-									// or server returns response with an error status.
-								  });
-							}
+							$http({
+							method: 'GET',
+							url: serviceRootURL + '/object_types/' + $rootScope.object_type
+							}).then(function successCallback(response) {
+										$scope.object_type = response.data;
+										
+										if($rootScope.object_id != undefined && $rootScope.object_id != '')
+										{
+											$http({
+												method: 'PUT',
+												url: serviceRootURL + '/' + $scope.object_type.name + '/' + $rootScope.object_id,
+												headers: {
+												   'content-type':'application/json'
+												},
+												data: $scope.data
+											}).then(function successCallback(response) {
+												modalInstance.close($scope.data._id);
+											  }, function errorCallback(response) {
+												// called asynchronously if an error occurs
+												// or server returns response with an error status.
+											  });
+										}
+										else
+										{
+											$http({
+												method: 'POST',
+												url: serviceRootURL + '/' + $scope.object_type.name,
+												headers: {
+												   'content-type':'application/json'
+												},
+												data: $scope.data
+											}).then(function successCallback(response) {
+												modalInstance.close($scope.data._id);
+											  }, function errorCallback(response) {
+												// called asynchronously if an error occurs
+												// or server returns response with an error status.
+											  });
+										}
+							}, function errorCallback(response) {
+								// called asynchronously if an error occurs
+								// or server returns response with an error status.
+							  }); 
 						};
 
 						$scope.cancel = function () {
@@ -427,7 +463,8 @@ module.component('formFields', {
 		'<div ng-if="data" ng-repeat="field in object_type.fields">' +
 
 			'<div ng-switch on="field.data_type.object_type">' +
-				'<div class="animate-switch" ng-switch-when="string">' +
+				//string
+				'<div class="animate-switch" ng-switch-when="16b8aa98-d9df-4899-84f0-d31652487abe">' +
 					'<div ng-if="field.data_type.multiplicity==\'many\'" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" ng-list placeholder="{{field.description}}"/>' +
@@ -441,7 +478,8 @@ module.component('formFields', {
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
 					'</div>' +
 				'</div>' +
-				'<div class="animate-switch" ng-switch-when="integer">' +
+				//integer
+				'<div class="animate-switch" ng-switch-when="42cbbb31-2bc3-42d4-a695-786920141a5f">' +
 					'<div ng-if="field.source" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<select class="form-control" ng-model="data[field.name]" ng-options="o as o for o in field.source"></select>' +
@@ -451,7 +489,8 @@ module.component('formFields', {
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
 					'</div>' +
 				'</div>' +
-				'<div class="animate-switch" ng-switch-when="boolean">' +
+				//boolean
+				'<div class="animate-switch" ng-switch-when="9498606b-28ad-4c6b-a73e-1b009e2ab734">' +
 					'<div class="form-group">' +
 						'<label>{{field.display_name}}</label>&nbsp;&nbsp;' +
 						'<div class="btn-group">' +
@@ -534,9 +573,9 @@ module.component('formFields', {
 							if (angular.isString(newValue)) {
 								$http({
 								  method: 'GET',
-								  url: serviceRootURL + '/object_types/?query=@.name==\'' + newValue + '\''
+								  url: serviceRootURL + '/object_types/' + newValue
 								}).then(function successCallback(response) {
-											$scope.object_type = response.data[0];
+											$scope.object_type = response.data;
 											
 											$scope.synchBindings();
 											
@@ -688,13 +727,24 @@ module.component('lookupField', {
 								$scope.field = self.fieldname;
 								
 								$http({
-								  method: 'GET',
-								  url: serviceRootURL + '/' + self.objecttypename
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + self.objecttypename
 								}).then(function successCallback(response) {
-											$scope.source = response.data;
-								  }, function errorCallback(response) {
-										alert(response);
-								  });
+											var object_type = response.data;
+											
+											$http({
+											  method: 'GET',
+											  url: serviceRootURL + '/' + object_type.name
+											}).then(function successCallback(response) {
+														$scope.source = response.data;
+											  }, function errorCallback(response) {
+													alert(response);
+											  });
+								}, function errorCallback(response) {
+									// called asynchronously if an error occurs
+									// or server returns response with an error status.
+								  }); 
+								
 								
 								$scope.bindingsSynched = true;
 							}
