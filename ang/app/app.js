@@ -25,7 +25,7 @@ var tenant = '';
 module.run(function($rootScope, appSettings){
 	$rootScope.getById = function(data, id){		
 		for (var i = 0; i < data.length; i++) {
-			if(data[i].id == id) return data[i];
+			if(data[i]._id == id) return data[i];
 		}
 	};
 	
@@ -149,8 +149,8 @@ module.component('navigationView', {
                             '<!-- /input-group -->' +
                         '</li>' +
 						'<li ng-if="pages" ng-repeat="page in pages">' +
-							'<a ng-if="tenant != \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/\' + tenant + \'/\' + page.id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
-							'<a ng-if="tenant == \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/*/\' + page.id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
+							'<a ng-if="tenant != \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/\' + tenant + \'/\' + page._id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
+							'<a ng-if="tenant == \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/*/\' + page._id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
 						'</li>' +
                     '</ul>' +
                '</div>' +
@@ -306,10 +306,10 @@ module.component('gridView', {
 						
 						function actionsHtml(data, type, full, meta) {
 							
-							return 	'<button class="btn btn-warning" ng-click="$ctrl.edit(\'' + data.id + '\', \'' + data.object_type + '\')">' +
+							return 	'<button class="btn btn-warning" ng-click="$ctrl.edit(\'' + data._id + '\', \'' + data._object_type + '\')">' +
 									'   <i class="fa fa-edit"></i>' +
 									'</button>&nbsp;' +
-									'<button class="btn btn-danger" ng-click="$ctrl.delete(\'' + data.id + '\', \'' + data.object_type + '\')">' +
+									'<button class="btn btn-danger" ng-click="$ctrl.delete(\'' + data._id + '\', \'' + data._object_type + '\')">' +
 									'   <i class="fa fa-trash-o"></i>' +
 									'</button>';
 						}
@@ -342,7 +342,7 @@ module.component('formView', {
 						
 						$http({
 							method: 'GET',
-							url: serviceRootURL + '/system_object/?query=@.name==\'' + $rootScope.object_type + '\''
+							url: serviceRootURL + '/object_types/?query=@.name==\'' + $rootScope.object_type + '\''
 							}).then(function successCallback(response) {
 										$scope.object_type = response.data[0];
 							}, function errorCallback(response) {
@@ -366,7 +366,7 @@ module.component('formView', {
 						{
 							$http({
 								 method: 'GET',
-								 url: serviceRootURL + '/system_object'
+								 url: serviceRootURL + '/object_types'
 							}).then(function successCallback(response) {
 										var objectTypes = response.data;
 										var object = $rootScope.createNewObject(objectTypes, $rootScope.object_type);
@@ -392,7 +392,7 @@ module.component('formView', {
 									},
 									data: $scope.data
 								}).then(function successCallback(response) {
-									modalInstance.close($scope.data.id);
+									modalInstance.close($scope.data._id);
 								  }, function errorCallback(response) {
 									// called asynchronously if an error occurs
 									// or server returns response with an error status.
@@ -408,7 +408,7 @@ module.component('formView', {
 									},
 									data: $scope.data
 								}).then(function successCallback(response) {
-									modalInstance.close($scope.data.id);
+									modalInstance.close($scope.data._id);
 								  }, function errorCallback(response) {
 									// called asynchronously if an error occurs
 									// or server returns response with an error status.
@@ -534,7 +534,7 @@ module.component('formFields', {
 							if (angular.isString(newValue)) {
 								$http({
 								  method: 'GET',
-								  url: serviceRootURL + '/system_object/?query=@.name==\'' + newValue + '\''
+								  url: serviceRootURL + '/object_types/?query=@.name==\'' + newValue + '\''
 								}).then(function successCallback(response) {
 											$scope.object_type = response.data[0];
 											
@@ -555,7 +555,7 @@ module.component('formFields', {
 								//objecttypename was set to a valid value and dataitem was set to null
 								$http({
 								  method: 'GET',
-								  url: serviceRootURL + '/system_object'
+								  url: serviceRootURL + '/object_types'
 								}).then(function successCallback(response) {
 											var objectTypes = response.data;
 											var object = $rootScope.createNewObject(objectTypes, self.objecttypename);
@@ -573,7 +573,7 @@ module.component('formFields', {
 						$scope.addNew = function (fieldName, objectTypeName, multiplicity) {
 							$http({
 								  method: 'GET',
-								  url: serviceRootURL + '/system_object'
+								  url: serviceRootURL + '/object_types'
 								}).then(function successCallback(response) {
 											var objectTypes = response.data;
 											var object = $rootScope.createNewObject(objectTypes, objectTypeName);
@@ -627,7 +627,7 @@ module.component('formFields', {
 	
 module.component('lookupField', {
 		template: 
-		'<select class="form-control" ng-model="data[field]" ng-options="item.id as item.display_name for item in source"></select>',
+		'<select class="form-control" ng-model="data[field]" ng-options="item._id as item.display_name for item in source"></select>',
 		bindings: {
 			objecttypename: '=',
 			id: '=',
