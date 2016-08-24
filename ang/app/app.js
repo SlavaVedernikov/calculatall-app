@@ -369,7 +369,8 @@ module.component('gridView', {
 module.component('formView', {
 		template: 
 			'<div class="modal-header">' +
-				'<h3 class="modal-title">{{object_type.display_name}}</h3>' +
+				'<h3 class="modal-title">{{data.display_name}}</h3>' +
+				'<h5 ng-if="data.display_name">{{object_type.display_name}}</h5>' +
 			'</div>' +
 			'<div class="modal-body">' +
 				'<div class="panel panel-default">' +
