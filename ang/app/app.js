@@ -53,10 +53,12 @@ module.run(function($rootScope, appSettings){
 		var object_type = $rootScope.getById(objectTypes, objectType);
 		var result = {};
 		
-		for(var i = 0; i < object_type.fields.length; i ++)
+		for(var i = 0; object_type.fields && i < object_type.fields.length; i ++)
 		{
 			var field = object_type.fields[i];
-			if(field.data_type.object_type == 'string')
+			var field_object_type = $rootScope.getById(objectTypes, field.data_type.object_type);
+			
+			if(field_object_type.name == 'string')
 			{
 				if(field.data_type.multiplicity == 'one')
 				{
@@ -78,7 +80,7 @@ module.run(function($rootScope, appSettings){
 					result[field.name] = [''];
 				}
 			}
-			else if(field.data_type.object_type == 'integer')
+			else if(field_object_type.name == 'integer')
 			{
 				if(field.data_type.multiplicity == 'one')
 				{
@@ -89,7 +91,7 @@ module.run(function($rootScope, appSettings){
 					result[field.name] = [0];
 				}
 			}
-			else if(field.data_type.object_type == 'boolean')
+			else if(field_object_type.name == 'boolean')
 			{
 				if(field.data_type.multiplicity == 'one')
 				{
@@ -114,7 +116,7 @@ module.run(function($rootScope, appSettings){
 						}
 						else if(field.data_type.association_type == 'link')
 						{
-							result[field.name] = '';
+							result[field.name] = field.default ? field.default : '';
 						}
 					}
 					else if(field.data_type.multiplicity == 'many')
@@ -184,7 +186,7 @@ module.component('gridView', {
 		bindings: {
 			view: '='
 		},
-		controller: function (DTOptionsBuilder, DTColumnBuilder, $routeParams, $scope, $http, $compile, $uibModal, $rootScope, appSettings) {
+		controller: function (DTOptionsBuilder, DTColumnBuilder, $routeParams, $scope, $http, $q, $compile, $uibModal, $rootScope, appSettings) {
 						
 						var self = this;
 						
@@ -192,59 +194,81 @@ module.component('gridView', {
 
 						self.edit = edit;
 						self.delete = deleteRow;
+						self.localPromise = localPromise;
 						self.dtInstance = {};
-						self.dtOptions = [];
-						self.dtColumns = [];
 						
+						//self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + object_type.name + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
+						self.dtOptions = DTOptionsBuilder.fromFnPromise(localPromise)
+							.withPaginationType('full_numbers')
+							.withDisplayLength(this.view.page_size)
+							.withOption('createdRow', createdRow)
+							.withOption('responsive', true)
+							.withOption('colReorder', true)
+							.withOption('dom', 'C<"clear">lfrtip')
+							//Look at styling, it's too dark at the moment
+							//.withOption('select', true)
+							.withButtons([{
+									text: 'Add new',
+									key: '1',
+									action: function (e, dt, node, config) {
+												add(self.view.source_object_type);
+											}
+								}
+							]);
+
+							self.dtColumns = [];
+
+						
+						for (var i = 0; i < this.view.fields.length; i++) {
+							var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_name)
+								.withTitle(this.view.fields[i].display_name)
+								.withOption('defaultContent', 'n/a');
+
+							self.dtColumns.push(obj);
+						}
+						
+						self.dtColumns.push(DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
+							.renderWith(actionsHtml));
+						
+						/*
+						DTInstances.getLast().then(function (dtInstance) {
+							self.dtInstance = dtInstance;
+						});
+						*/
+						///*
 						self.dtIntanceCallback = function (instance) {
 							self.dtInstance = instance;
 						}
+						//*/
 						
-						$http({
-						method: 'GET',
-						url: serviceRootURL + '/object_types/' + this.view.source_object_type
-						}).then(function successCallback(response) {
-									var object_type = response.data;
-									
-									self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + object_type.name + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
-										.withPaginationType('full_numbers')
-										.withDisplayLength(this.view.page_size)
-										.withOption('createdRow', createdRow)
-										.withOption('responsive', true)
-										.withOption('colReorder', true)
-										.withOption('dom', 'C<"clear">lfrtip')
-										//Look at styling, it's too dark at the moment
-										//.withOption('select', true)
-										.withButtons([{
-												text: 'Add new',
-												key: '1',
-												action: function (e, dt, node, config) {
-															add(self.view.source_object_type);
-														}
-											}
-										]);
-
-										self.dtColumns = [];
-
-									
-									for (var i = 0; i < this.view.fields.length; i++) {
-										var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_name)
-											.withTitle(this.view.fields[i].display_name)
-											.withOption('defaultContent', 'n/a');
-
-										self.dtColumns.push(obj);
-									}
-									
-									self.dtColumns.push(DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
-										.renderWith(actionsHtml));
-										
-									self.dtInstance.reloadData();
-						}, function errorCallback(response) {
-							alert(response);
-						  }); 
 							  
 						
-						
+						function localPromise() {
+							var dfd = $q.defer();
+							
+							var serviceRootURL = $rootScope.getAPIRootURL();
+							$http({
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + self.view.source_object_type
+								}).then(function successCallback(response) {
+										var object_type = response.data;
+										
+										$http({
+											method: 'GET',
+											url: serviceRootURL + '/' + object_type.name,
+										}).then(function successCallback(response) {
+												self.data = response.data;
+												dfd.resolve(self.data);
+										  }, function errorCallback(response) {
+												alert(response);
+										  });
+									}, function errorCallback(response) {
+											alert(response);
+									  });
+							
+							return dfd.promise;
+						}
+		
 						function add(object_type) {
 							$rootScope.object_type = object_type;
 							openModal();
