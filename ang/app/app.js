@@ -220,7 +220,8 @@ module.component('gridView', {
 
 						
 						for (var i = 0; i < this.view.fields.length; i++) {
-							var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_name)
+							//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+							var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_path.replace(/\./g,"_"))
 								.withTitle(this.view.fields[i].display_name)
 								.withOption('defaultContent', 'n/a');
 
@@ -252,10 +253,22 @@ module.component('gridView', {
 								url: serviceRootURL + '/object_types/' + self.view.source_object_type
 								}).then(function successCallback(response) {
 										var object_type = response.data;
+										var view = '';
+										//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+										for(var i = 0; i < self.view.fields.length; i++)
+										{
+											if(view != '')
+											{
+												view += ',';
+											}
+											view += self.view.fields[i].source_path;
+											view += '|';
+											view += self.view.fields[i].source_path.replace(/\./g,"_");
+										}
 										
 										$http({
 											method: 'GET',
-											url: serviceRootURL + '/' + object_type.name,
+											url: serviceRootURL + '/' + object_type.name + '/?view=' + view,
 										}).then(function successCallback(response) {
 												self.data = response.data;
 												dfd.resolve(self.data);
@@ -356,10 +369,10 @@ module.component('gridView', {
 						
 						function actionsHtml(data, type, full, meta) {
 							
-							return 	'<button class="btn btn-warning" ng-click="$ctrl.edit(\'' + data._id + '\', \'' + data._object_type + '\')">' +
+							return 	'<button class="btn btn-warning" ng-click="$ctrl.edit(\'' + data._id + '\', \'' + self.view.source_object_type + '\')">' +
 									'   <i class="fa fa-edit"></i>' +
 									'</button>&nbsp;' +
-									'<button class="btn btn-danger" ng-click="$ctrl.delete(\'' + data._id + '\', \'' + data._object_type + '\')">' +
+									'<button class="btn btn-danger" ng-click="$ctrl.delete(\'' + data._id + '\', \'' + self.view.source_object_type + '\')">' +
 									'   <i class="fa fa-trash-o"></i>' +
 									'</button>';
 						}
@@ -494,7 +507,7 @@ module.component('formFields', {
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" ng-list placeholder="{{field.description}}"/>' +
 					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source" class="form-group">' +
+					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && !(field.source.length==1 && field.source[0]==\'\')" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<select class="form-control" ng-model="data[field.name]" ng-options="o as o for o in field.source"></select>' +
 					'</div>' +

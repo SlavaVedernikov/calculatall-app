@@ -1,0 +1,36 @@
+<html>
+
+<head>
+  <title>Multitenancy scenario lounch</title>
+
+</head>
+<body>	
+	<script type="text/javascript">
+	function OpenInNewTab(url) {
+		url = 'http://127.0.0.1:8080/ang/app/#!/' + url;
+		var win = window.open(url, '_blank');
+		win.focus();
+	}
+	</script>
+	<p>
+		<div><a href="#" onclick="OpenInNewTab('system/app_builder/*');">App builder (owner)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/app_builder/system');">App builder (System)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/app_builder/some_other_account');">App builder (Some other account)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/app_builder/yet_another_account');">App builder (Yet another account)</a></div>
+	</p>
+	<p>
+		<div><a href="#" onclick="OpenInNewTab('system/projects/*');">Projects (owner)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/projects/system');">Projects (System)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/projects/some_other_account');">Projects (Some other account)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/projects/yet_another_account');">Projects (Yet another account)</a></div>
+	</p>
+	<p>
+		<div><a href="#" onclick="OpenInNewTab('system/todo/*');">To-Do (owner)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/todo/system');">To-Do (System)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/todo/some_other_account');">To-Do (Some other account)</a></div>
+		<div><a href="#" onclick="OpenInNewTab('system/todo/yet_another_account');">To-Do (Yet another account)</a></div>
+	</p>
+	
+
+</body>
+</html>
