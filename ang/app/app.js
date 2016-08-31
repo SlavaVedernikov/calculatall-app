@@ -35,17 +35,32 @@ module.run(function($rootScope, appSettings){
 		}
 	};
 	
+	$rootScope.getUntokenisedString = function(s, token, source){
+		var regex = new RegExp('\\{' + token + '.' + '\\w+\\}', "g");
+		var match = s.match(regex);
+		
+		for (var i = 0; i < match.length; i++)
+		{
+			s = s.replace(match[i], source[match[i].replace('{context.', '').replace('}', '')]);
+		}
+		
+		return s;
+	};
+	
+	
 	$rootScope.getAPIRootURL = function(){	
 		var result = '';
 		
-		if(tenant != '*')
+		if($rootScope.app)
 		{
-			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/' + $rootScope.tenant;
+			result = appSettings.serviceRootURL + '/' + $rootScope.tenant + '/' + $rootScope.app.name + '/' + $rootScope.tenant;
 		}
 		else
 		{
-			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/*';
+			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/' + $rootScope.tenant;
 		}
+		
+
 		return result;
 	};
 	
@@ -150,31 +165,35 @@ module.component('navigationView', {
                             '</div>' +
                             '<!-- /input-group -->' +
                         '</li>' +
-						'<li ng-if="pages" ng-repeat="page in pages">' +
-							'<a ng-if="tenant != \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/\' + tenant + \'/\' + page._id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
-							'<a ng-if="tenant == \'\'" href="{{\'#!/\' + owner + \'/\' + application + \'/*/\' + page._id}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{page.display_name}}</a>' +
+						'<li ng-if="navigation" ng-repeat="item in navigation.menu_items">' +
+							'<a href="{{\'#!/\' + owner + \'/\' + application + \'/\' + tenant + \'/\' + item.page + (app ? \'?app=\' + app : \'\')}}"><i class="fa fa-gear fa-fw"></i>&nbsp;{{item.display_name}}</a>' +
 						'</li>' +
                     '</ul>' +
                '</div>' +
                 '<!-- /.sidebar-collapse -->' +
             '</div>' +
             '<!-- /.navbar-static-side -->',
-		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
+		controller: function ($routeParams, $scope, $http, $location, $rootScope, appSettings) {
 		
 			var serviceRootURL = $rootScope.getAPIRootURL();
-			$scope.pages = null;
+			$scope.menu_items = null;
 			$scope.owner = $rootScope.owner;
 			$scope.application = $rootScope.application;
 			$scope.tenant = $rootScope.tenant;
+			$scope.navigation = null;
+			
+			var query = $location.search();
+			$scope.app = query.app;
 			
 			$http({
 				method: 'GET',
-				url: serviceRootURL + '/page'
+				url: serviceRootURL + '/application?query=@.name==\'' + $rootScope.application + '\''
 				}).then(function successCallback(response) {
-						$scope.pages = response.data;
+						$scope.navigation = response.data[0].navigation;
 				}, function errorCallback(response) {
 					alert(response);
-				});
+				});			
+			
 		}
 						
 	});
@@ -266,9 +285,10 @@ module.component('gridView', {
 											view += self.view.fields[i].source_path.replace(/\./g,"_");
 										}
 										
+										var query = ((self.view.query && self.view.query != '') ? $rootScope.getUntokenisedString(self.view.query, 'context', $rootScope) : undefined);
 										$http({
 											method: 'GET',
-											url: serviceRootURL + '/' + object_type.name + '/?view=' + view,
+											url: serviceRootURL + '/' + object_type.name + '/?view=' + view + (query ? '&query=' + query : ''),
 										}).then(function successCallback(response) {
 												self.data = response.data;
 												dfd.resolve(self.data);
@@ -299,7 +319,7 @@ module.component('gridView', {
 							
 							$http({
 							method: 'GET',
-							url: serviceRootURL + '/object_types/' + $rootScope.object_type
+							url: serviceRootURL + '/object_types/' + object_type
 							}).then(function successCallback(response) {
 										var object_type = response.data;
 										
@@ -797,65 +817,74 @@ module.config(['$locationProvider', '$routeProvider', function($locationProvider
 	
 angular.module('myApp.moduleLoader', ['ngRoute'])
 	
-	.config(['$routeProvider', function($routeProvider) {
+	.config(['$locationProvider', '$routeProvider', function($locationProvider, $routeProvider ) {
 		$routeProvider.when('/:owner/:application/:tenant', {
 			templateUrl: 'page.html',
-			controller: function($scope, $routeParams, $http, $rootScope, appSettings) {
+			controller: function($scope, $routeParams, $location, $http, $rootScope, appSettings) {
 				var self = this;
 				
 				$scope.page = null;
 				$rootScope.owner = $routeParams.owner;
 				$rootScope.application = $routeParams.application;
 				$rootScope.tenant = $routeParams.tenant;
+				$rootScope.app = null;
+				$rootScope.appId = '';
+				
+				var query = $location.search();
+				
+				var serviceRootURL = $rootScope.getAPIRootURL();
+				
+				if(query.app)
+				{					
+					$http({
+						method: 'GET',
+						url: serviceRootURL + '/application/' + query.app
+						}).then(function successCallback(response) {
+								$rootScope.app = response.data;
+								$rootScope.appId = $rootScope.app._id;
+						}, function errorCallback(response) {
+							alert(response);
+						});
+				}
+				else
+				{
+					$rootScope.app = null
+				}
 				
 			}
 	  });
 	  
 		$routeProvider.when('/:owner/:application/:tenant/:page', {
 		templateUrl: 'page.html',
-			controller: function($scope, $routeParams, $http, $rootScope, appSettings) {
+			controller: function($scope, $routeParams, $location, $http, $rootScope, appSettings) {
 				var self = this;
 				
 				$scope.page = null;
 				$rootScope.owner = $routeParams.owner;
 				$rootScope.application = $routeParams.application;
 				$rootScope.tenant = $routeParams.tenant;
+				$rootScope.app = null;
+				
+				var query = $location.search();
 				
 				var serviceRootURL = $rootScope.getAPIRootURL();
 				
-				$http({
-					method: 'GET',
-					url: serviceRootURL + '/page/' + $routeParams.page
-					}).then(function successCallback(response) {
-							$scope.page = response.data;
-					}, function errorCallback(response) {
-						alert(response);
-					});
-			}
-	  });
-	  
-	  $routeProvider.when('/:owner/:application/*', {
-			templateUrl: 'page.html',
-			controller: function($scope, $routeParams, $http, $rootScope, appSettings) {
-				var self = this;
-				
-				$scope.page = null;
-				$rootScope.owner = $routeParams.owner;
-				$rootScope.application = $routeParams.application;
-				
-			}
-	  });
-	  
-		$routeProvider.when('/:owner/:application/*/:page', {
-		templateUrl: 'page.html',
-			controller: function($scope, $routeParams, $http, $rootScope, appSettings) {
-				var self = this;
-				
-				$scope.page = null;
-				$rootScope.owner = $routeParams.owner;
-				$rootScope.application = $routeParams.application;
-				
-				var serviceRootURL = $rootScope.getAPIRootURL();
+				if(query.app)
+				{					
+					$http({
+						method: 'GET',
+						url: serviceRootURL + '/application/' + query.app
+						}).then(function successCallback(response) {
+								$rootScope.app = response.data;
+								$rootScope.appId = $rootScope.app._id;
+						}, function errorCallback(response) {
+							alert(response);
+						});
+				}
+				else
+				{
+					$rootScope.app = null
+				}
 				
 				$http({
 					method: 'GET',
