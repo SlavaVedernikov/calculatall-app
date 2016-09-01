@@ -213,17 +213,34 @@ module.component('gridView', {
 
 						self.edit = edit;
 						self.delete = deleteRow;
-						self.localPromise = localPromise;
+						self.dataPromise = dataPromise;
 						self.dtInstance = {};
+						self.actionsHtml = actionsHtml;
+						self.DTColumnBuilder = DTColumnBuilder;
+						self.DTOptionsBuilder = DTOptionsBuilder;
+						self.dtColumns = columnsPromise();
+						self.object_types = [];
 						
-						//self.dtOptions = DTOptionsBuilder.fromSource(serviceRootURL + '/' + object_type.name + ((this.view.query != undefined) ? '?query=' + this.view.query : ''))
-						self.dtOptions = DTOptionsBuilder.fromFnPromise(localPromise)
+						self.view_param = '';
+						//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+						for(var i = 0; i < self.view.fields.length; i++)
+						{
+							if(self.view_param != '')
+							{
+								self.view_param += ',';
+							}
+							self.view_param += self.view.fields[i].source_path;
+							self.view_param += '|';
+							self.view_param += self.view.fields[i].source_path.replace(/\./g,"_");
+						}
+						
+						self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
 							.withPaginationType('full_numbers')
-							.withDisplayLength(this.view.page_size)
+							.withDisplayLength(self.view.page_size)
 							.withOption('createdRow', createdRow)
-							.withOption('responsive', true)
-							.withOption('colReorder', true)
-							.withOption('dom', 'C<"clear">lfrtip')
+							//.withOption('responsive', true)
+							//.withOption('colReorder', true)
+							//.withOption('dom', 'C<"clear">lfrtip')
 							//Look at styling, it's too dark at the moment
 							//.withOption('select', true)
 							.withButtons([{
@@ -234,61 +251,91 @@ module.component('gridView', {
 											}
 								}
 							]);
-
-							self.dtColumns = [];
-
-						
-						for (var i = 0; i < this.view.fields.length; i++) {
-							//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
-							var obj = DTColumnBuilder.newColumn(this.view.fields[i].source_path.replace(/\./g,"_"))
-								.withTitle(this.view.fields[i].display_name)
-								.withOption('defaultContent', 'n/a');
-
-							self.dtColumns.push(obj);
-						}
-						
-						self.dtColumns.push(DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
-							.renderWith(actionsHtml));
-						
-						/*
-						DTInstances.getLast().then(function (dtInstance) {
-							self.dtInstance = dtInstance;
-						});
-						*/
-						///*
+							
 						self.dtIntanceCallback = function (instance) {
 							self.dtInstance = instance;
-						}
-						//*/
+						}		  
+								
 						
-							  
-						
-						function localPromise() {
+						function columnsPromise(){
 							var dfd = $q.defer();
 							
 							var serviceRootURL = $rootScope.getAPIRootURL();
+							
+							$http({
+							method: 'GET',
+							url: serviceRootURL + '/object_types'
+							}).then(function successCallback(response) {
+									self.object_types = response.data;
+									
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/object_types/' + self.view.source_object_type + '/?view=' + self.view_param
+										}).then(function successCallback(response) {
+												var view_object_type = response.data;
+												
+												var columns = [];
+										
+												for(var i = 0; i < self.view.fields.length; i++) {
+													var field = $rootScope.getByName(view_object_type.fields, self.view.fields[i].source_path);
+													var field_object_type = $rootScope.getById(self.object_types, field.data_type.object_type);
+													var column_type = 'string'
+													
+													if(field_object_type)
+													{
+														switch(field_object_type.name) {
+															case 'string':
+																column_type = 'string';
+																break;
+															case 'integer':
+																column_type = 'num';
+																break;
+															default:
+																column_type = 'string';
+														}
+													}
+													
+													//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+													var column = self.DTColumnBuilder.newColumn(self.view.fields[i].source_path.replace(/\./g,"_"))
+														.withTitle(self.view.fields[i].display_name)
+														.withOption('defaultContent', 'n/a')
+														//TODO: Change type as per field definition
+														.withOption('type', column_type);
+
+													columns.push(column);
+												}
+												
+												columns.push(self.DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
+													.renderWith(self.actionsHtml));
+												
+												dfd.resolve(columns);
+												
+											}, function errorCallback(response) {
+													alert(response);
+											  });
+									
+								}, function errorCallback(response) {
+										alert(response);
+								  });
+							
+							return dfd.promise;	  
+						}
+						
+						function dataPromise() {
+							var dfd = $q.defer();
+							
+							var serviceRootURL = $rootScope.getAPIRootURL();
+							
 							$http({
 								method: 'GET',
 								url: serviceRootURL + '/object_types/' + self.view.source_object_type
 								}).then(function successCallback(response) {
 										var object_type = response.data;
-										var view = '';
-										//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
-										for(var i = 0; i < self.view.fields.length; i++)
-										{
-											if(view != '')
-											{
-												view += ',';
-											}
-											view += self.view.fields[i].source_path;
-											view += '|';
-											view += self.view.fields[i].source_path.replace(/\./g,"_");
-										}
-										
 										var query = ((self.view.query && self.view.query != '') ? $rootScope.getUntokenisedString(self.view.query, 'context', $rootScope) : undefined);
+										
 										$http({
 											method: 'GET',
-											url: serviceRootURL + '/' + object_type.name + '/?view=' + view + (query ? '&query=' + query : ''),
+											url: serviceRootURL + '/' + object_type.name + '/?view=' + self.view_param + (query ? '&query=' + query : ''),
 										}).then(function successCallback(response) {
 												self.data = response.data;
 												dfd.resolve(self.data);
@@ -527,22 +574,22 @@ module.component('formFields', {
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" ng-list placeholder="{{field.description}}"/>' +
 					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && !(field.source.length==1 && field.source[0]==\'\')" class="form-group">' +
+					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && field.source.length > 0" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
-						'<select class="form-control" ng-model="data[field.name]" ng-options="o as o for o in field.source"></select>' +
+						'<select class="form-control" ng-model="data[field.name]" ng-options="item.value as item.display_name for item in field.source"></select>' +
 					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && !field.source" class="form-group">' +
+					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
 					'</div>' +
 				'</div>' +
 				//integer
 				'<div class="animate-switch" ng-switch-when="42cbbb31-2bc3-42d4-a695-786920141a5f">' +
-					'<div ng-if="field.source" class="form-group">' +
+					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && field.source.length > 0" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
-						'<select class="form-control" ng-model="data[field.name]" ng-options="o as o for o in field.source"></select>' +
+						'<select class="form-control" ng-model="data[field.name]" ng-options="item.value as item.display_name for item in field.source"></select>' +
 					'</div>' +
-					'<div ng-if="!field.source" class="form-group">' +
+					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
 						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
 					'</div>' +
