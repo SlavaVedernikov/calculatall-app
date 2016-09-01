@@ -35,6 +35,12 @@ module.run(function($rootScope, appSettings){
 		}
 	};
 	
+	$rootScope.getByValue = function(data, value){		
+		for (var i = 0; i < data.length; i++) {
+			if(data[i].value == value) return data[i];
+		}
+	}
+	
 	$rootScope.getUntokenisedString = function(s, token, source){
 		var regex = new RegExp('\\{' + token + '.' + '\\w+\\}', "g");
 		var match = s.match(regex);
@@ -215,14 +221,16 @@ module.component('gridView', {
 						self.delete = deleteRow;
 						self.dataPromise = dataPromise;
 						self.dtInstance = {};
-						self.actionsHtml = actionsHtml;
+						self.renderActions = renderActions;
+						self.renderValue = renderValue;
 						self.DTColumnBuilder = DTColumnBuilder;
 						self.DTOptionsBuilder = DTOptionsBuilder;
 						self.dtColumns = columnsPromise();
 						self.object_types = [];
+						self.view_object_type = null;
 						
 						self.view_param = '';
-						//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+						
 						for(var i = 0; i < self.view.fields.length; i++)
 						{
 							if(self.view_param != '')
@@ -231,6 +239,7 @@ module.component('gridView', {
 							}
 							self.view_param += self.view.fields[i].source_path;
 							self.view_param += '|';
+							//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
 							self.view_param += self.view.fields[i].source_path.replace(/\./g,"_");
 						}
 						
@@ -272,13 +281,14 @@ module.component('gridView', {
 										method: 'GET',
 										url: serviceRootURL + '/object_types/' + self.view.source_object_type + '/?view=' + self.view_param
 										}).then(function successCallback(response) {
-												var view_object_type = response.data;
+												self.view_object_type = response.data;
 												
 												var columns = [];
 										
 												for(var i = 0; i < self.view.fields.length; i++) {
-													var field = $rootScope.getByName(view_object_type.fields, self.view.fields[i].source_path);
+													var field = $rootScope.getByName(self.view_object_type.fields, self.view.fields[i].source_path);
 													var field_object_type = $rootScope.getById(self.object_types, field.data_type.object_type);
+													
 													var column_type = 'string'
 													
 													if(field_object_type)
@@ -295,18 +305,20 @@ module.component('gridView', {
 														}
 													}
 													
+													
 													//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
 													var column = self.DTColumnBuilder.newColumn(self.view.fields[i].source_path.replace(/\./g,"_"))
 														.withTitle(self.view.fields[i].display_name)
 														.withOption('defaultContent', 'n/a')
 														//TODO: Change type as per field definition
-														.withOption('type', column_type);
+														.withOption('type', column_type)
+														.renderWith(self.renderValue);
 
 													columns.push(column);
 												}
 												
 												columns.push(self.DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
-													.renderWith(self.actionsHtml));
+													.renderWith(self.renderActions));
 												
 												dfd.resolve(columns);
 												
@@ -434,14 +446,35 @@ module.component('gridView', {
 							});
 						}
 						
-						function actionsHtml(data, type, full, meta) {
-							
+						function renderActions(data, type, full, meta) {
 							return 	'<button class="btn btn-warning" ng-click="$ctrl.edit(\'' + data._id + '\', \'' + self.view.source_object_type + '\')">' +
 									'   <i class="fa fa-edit"></i>' +
 									'</button>&nbsp;' +
 									'<button class="btn btn-danger" ng-click="$ctrl.delete(\'' + data._id + '\', \'' + self.view.source_object_type + '\')">' +
 									'   <i class="fa fa-trash-o"></i>' +
 									'</button>';
+						}
+						
+						function renderValue(data, type, full, meta) {
+							var result = data;
+							
+							if(type == "display")
+							{
+								var field = self.view_object_type.fields[meta.col];
+								var field_valueLookup;
+														
+								if(field.source)
+								{
+									field_valueLookup = $rootScope.getByValue(field.source, data);
+								}
+								
+								if(field_valueLookup)
+								{
+									result = field_valueLookup.display_name;
+								}
+							}
+							
+							return result;
 						}
 					}
 	});
