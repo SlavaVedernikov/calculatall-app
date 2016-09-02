@@ -11,6 +11,7 @@ var module = angular.module('myApp', [
   //'datatables.colvis',
   'datatables.buttons',
   'ui.bootstrap',
+  'ui-notification',
   'myApp.settings',
   'myApp.moduleLoader'
 ]);
@@ -22,7 +23,35 @@ var owner = '';
 var application = '';
 var tenant = '';
 
-module.run(function($rootScope, appSettings){
+module.run(function($rootScope, appSettings, Notification){
+	$rootScope.showAlert = function(message, type){	
+		var title;
+		var icon = '';
+		switch (type){
+			case 'error':
+				title = 'Unable to complete request.';
+				icon = 'glyphicon glyphicon-exclamation-sign';
+				break;
+			case 'warning':
+				title = 'All done, read the note below.';
+				icon = 'glyphicon glyphicon-warning-sign';
+				break;
+			case 'success':
+				title = 'Success.';
+				icon = 'glyphicon glyphicon-ok';
+				break;
+			default:
+				title = 'Important!'
+				icon = 'glyphicon glyphicon-info-sign';
+		}
+		
+		var titleHtml = '<span class="' + icon + '" aria-hidden="true"></span>&nbsp;&nbsp;' + title;
+		//var titleHtml = title;
+		 
+		message = ((message == '') ? 'Unexpected error. We are looking into it.' : message);
+		Notification({title: titleHtml, message: message}, type);
+	};
+	
 	$rootScope.getById = function(data, id){		
 		for (var i = 0; i < data.length; i++) {
 			if(data[i]._id == id) return data[i];
@@ -38,6 +67,12 @@ module.run(function($rootScope, appSettings){
 	$rootScope.getByValue = function(data, value){		
 		for (var i = 0; i < data.length; i++) {
 			if(data[i].value == value) return data[i];
+		}
+	}
+	
+	$rootScope.getByKey = function(data, key){		
+		for (var i = 0; i < data.length; i++) {
+			if(data[i].key == key) return data[i];
 		}
 	}
 	
@@ -197,7 +232,7 @@ module.component('navigationView', {
 				}).then(function successCallback(response) {
 						$scope.navigation = response.data[0].navigation;
 				}, function errorCallback(response) {
-					alert(response);
+					$rootScope.showAlert(response.statusText, 'error');
 				});			
 			
 		}
@@ -245,7 +280,8 @@ module.component('gridView', {
 						
 						self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
 							.withPaginationType('full_numbers')
-							.withDisplayLength(self.view.page_size)
+							.withDisplayLength(Number(self.view.page_size))
+							//.withDisplayLength(10)
 							.withOption('createdRow', createdRow)
 							//.withOption('responsive', true)
 							//.withOption('colReorder', true)
@@ -286,7 +322,8 @@ module.component('gridView', {
 												var columns = [];
 										
 												for(var i = 0; i < self.view.fields.length; i++) {
-													var field = $rootScope.getByName(self.view_object_type.fields, self.view.fields[i].source_path);
+													var field_name = self.view.fields[i].source_path.replace(/\./g,"_");
+													var field = $rootScope.getByName(self.view_object_type.fields, field_name);
 													var field_object_type = $rootScope.getById(self.object_types, field.data_type.object_type);
 													
 													var column_type = 'string'
@@ -307,7 +344,7 @@ module.component('gridView', {
 													
 													
 													//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
-													var column = self.DTColumnBuilder.newColumn(self.view.fields[i].source_path.replace(/\./g,"_"))
+													var column = self.DTColumnBuilder.newColumn(field_name)
 														.withTitle(self.view.fields[i].display_name)
 														.withOption('defaultContent', 'n/a')
 														//TODO: Change type as per field definition
@@ -323,11 +360,11 @@ module.component('gridView', {
 												dfd.resolve(columns);
 												
 											}, function errorCallback(response) {
-													alert(response);
+													$rootScope.showAlert(response.statusText, 'error');
 											  });
 									
 								}, function errorCallback(response) {
-										alert(response);
+										$rootScope.showAlert(response.statusText, 'error');
 								  });
 							
 							return dfd.promise;	  
@@ -352,10 +389,10 @@ module.component('gridView', {
 												self.data = response.data;
 												dfd.resolve(self.data);
 										  }, function errorCallback(response) {
-												alert(response);
+												$rootScope.showAlert(response.statusText, 'error');
 										  });
 									}, function errorCallback(response) {
-											alert(response);
+											$rootScope.showAlert(response.statusText, 'error');
 									  });
 							
 							return dfd.promise;
@@ -387,12 +424,12 @@ module.component('gridView', {
 											url: serviceRootURL + '/' + object_type.name + '/' + id,
 										}).then(function successCallback(response) {
 												self.dtInstance.reloadData();
+												$rootScope.showAlert('Object is deleted', 'success');
 										  }, function errorCallback(response) {
-												alert(response);
+												$rootScope.showAlert(response.statusText, 'error');
 										  });
 							}, function errorCallback(response) {
-								// called asynchronously if an error occurs
-								// or server returns response with an error status.
+								$rootScope.showAlert(response.statusText, 'error');
 							  }); 
 							
 						}
@@ -417,6 +454,7 @@ module.component('gridView', {
 							modalInstance.result.then(function (data) {
 								// Reload the data so that DT is refreshed
 								self.dtInstance.reloadData();
+								$rootScope.showAlert((($rootScope.object_id != '') ? 'Object is successfully updated' : 'Object is successfully created'), 'success');
 							});
 							
 							modalInstance.closed.then(function (data) {
@@ -481,6 +519,7 @@ module.component('gridView', {
 	
 module.component('formView', {
 		template: 
+		'<form name="userForm" novalidate>' +
 			'<div class="modal-header">' +
 				'<h3 class="modal-title">{{data.display_name}}</h3>' +
 				'<h5 ng-if="data.display_name">{{object_type.display_name}}</h5>' +
@@ -489,7 +528,7 @@ module.component('formView', {
 				'<div class="panel panel-default">' +
 					'<div class="panel-body">' +
 						'<form name = "formView">' +
-							'<form-fields objecttypename="object_type._id" dataitem="data"></form-fields>' +
+							'<form-fields objecttypename="object_type._id" dataitem="data" path="" form="userForm" submitted="submitted"></form-fields>' +
 						'</form>' +
 					'</div>' +
 				'</div>' +
@@ -497,11 +536,12 @@ module.component('formView', {
 			'<div class="modal-footer">' +
 				'<button class="btn btn-primary" ng-click="ok()">OK</button>' +
 				'<button class="btn btn-warning" ng-click="cancel()">Cancel</button>' +
-			'</div>',
+			'</div>' +
+		'</form>',
 		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
 						
 						var self = this;
-						
+						$scope.submitted = false;
 						var serviceRootURL = $rootScope.getAPIRootURL();
 						
 						$http({
@@ -518,8 +558,7 @@ module.component('formView', {
 											}).then(function successCallback(response) {
 														$scope.data = response.data;
 												}, function errorCallback(response) {
-													// called asynchronously if an error occurs
-													// or server returns response with an error status.
+													$rootScope.showAlert(response.statusText, 'error');
 												});
 										}
 										else
@@ -533,12 +572,11 @@ module.component('formView', {
 														
 														$scope.data = object;
 												}, function errorCallback(response) {
-														alert(response);
+														$rootScope.showAlert(response.statusText, 'error');
 												});
 										}
 							}, function errorCallback(response) {
-								// called asynchronously if an error occurs
-								// or server returns response with an error status.
+								$rootScope.showAlert(response.statusText, 'error');
 							  }); 
 
 						$scope.getFieldValue = function (fieldName) {
@@ -546,50 +584,60 @@ module.component('formView', {
 						};
 						
 						$scope.ok = function () {
-							$http({
-							method: 'GET',
-							url: serviceRootURL + '/object_types/' + $rootScope.object_type
-							}).then(function successCallback(response) {
-										$scope.object_type = response.data;
-										
-										if($rootScope.object_id != undefined && $rootScope.object_id != '')
-										{
-											$http({
-												method: 'PUT',
-												url: serviceRootURL + '/' + $scope.object_type.name + '/' + $rootScope.object_id,
-												headers: {
-												   'content-type':'application/json'
-												},
-												data: $scope.data
-											}).then(function successCallback(response) {
-												modalInstance.close($scope.data._id);
-											  }, function errorCallback(response) {
-												// called asynchronously if an error occurs
-												// or server returns response with an error status.
-											  });
-										}
-										else
-										{
-											$http({
-												method: 'POST',
-												url: serviceRootURL + '/' + $scope.object_type.name,
-												headers: {
-												   'content-type':'application/json'
-												},
-												data: $scope.data
-											}).then(function successCallback(response) {
-												modalInstance.close($scope.data._id);
-											  }, function errorCallback(response) {
-												// called asynchronously if an error occurs
-												// or server returns response with an error status.
-											  });
-										}
-							}, function errorCallback(response) {
-								// called asynchronously if an error occurs
-								// or server returns response with an error status.
-							  }); 
+							$scope.$broadcast('show-errors-check-validity');
+							$scope.submitted = true;
+							
+							if ($scope.userForm.$valid) {
+								$http({
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + $rootScope.object_type
+								}).then(function successCallback(response) {
+											$scope.object_type = response.data;
+											
+											if($rootScope.object_id != undefined && $rootScope.object_id != '')
+											{
+												$http({
+													method: 'PUT',
+													url: serviceRootURL + '/' + $scope.object_type.name + '/' + $rootScope.object_id,
+													headers: {
+													   'content-type':'application/json'
+													},
+													data: $scope.data
+												}).then(function successCallback(response) {
+													modalInstance.close($scope.data._id);
+												  }, function errorCallback(response) {
+													$rootScope.showAlert(response.statusText, 'error');
+												  });
+											}
+											else
+											{
+												$http({
+													method: 'POST',
+													url: serviceRootURL + '/' + $scope.object_type.name,
+													headers: {
+													   'content-type':'application/json'
+													},
+													data: $scope.data
+												}).then(function successCallback(response) {
+													modalInstance.close($scope.data._id);
+												  }, function errorCallback(response) {
+													$rootScope.showAlert(response.statusText, 'error');
+												  });
+											}
+								}, function errorCallback(response) {
+									$rootScope.showAlert(response.statusText, 'error');
+								  }); 
+								
+								$scope.reset();
+							}
+							
 						};
 
+						$scope.reset = function() {
+							
+							$scope.$broadcast('show-errors-reset');
+						}
+  
 						$scope.cancel = function () {
 							modalInstance.dismiss('cancel');
 						};
@@ -609,22 +657,30 @@ module.component('formFields', {
 					'</div>' +
 					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && field.source.length > 0" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
-						'<select class="form-control" ng-model="data[field.name]" ng-options="item.value as item.display_name for item in field.source"></select>' +
+						'<select class="form-control" ng-model="data[field.name]" ng-options="item.key as item.display_name for item in field.source"></select>' +
 					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group">' +
+					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group" show-errors="{showSuccess: true}">' +
 						'<label>{{field.display_name}}</label>' +
-						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+						'<input ng-required="true" ng-model = "data[field.name]" name = "{{path + \'_\' + field.name}}" name1 = "scope.path + \'_\' + scope.field.name" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+						'<p class="help-block" ng-if="submitted && form[path + \'_\' + field.name].$error.required">\'{{field.display_name}}\' is required</p>' +
+					'</div>' +
+				'</div>' +
+				//large_string
+				'<div class="animate-switch" ng-switch-when="9224d81c-e9a3-4260-8d7e-4f418d8ddaf3">' +
+					'<div class="form-group">' +
+						'<label>{{field.display_name}}</label>' +
+						'<textarea rows="5" ng-model = "data[field.name]" class="form-control" placeholder="{{field.description}}"/>' +
 					'</div>' +
 				'</div>' +
 				//integer
 				'<div class="animate-switch" ng-switch-when="42cbbb31-2bc3-42d4-a695-786920141a5f">' +
 					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && field.source.length > 0" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
-						'<select class="form-control" ng-model="data[field.name]" ng-options="item.value as item.display_name for item in field.source"></select>' +
+						'<select class="form-control" ng-model="data[field.name]" ng-options="item.key as item.display_name for item in field.source"></select>' +
 					'</div>' +
 					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group">' +
 						'<label>{{field.display_name}}</label>' +
-						'<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
+						'<input ng-model = "data[field.name]" class="form-control" type = "number" placeholder="{{field.description}}"/>' +
 					'</div>' +
 				'</div>' +
 				//boolean
@@ -685,7 +741,10 @@ module.component('formFields', {
 			'<div>',
 		bindings: {
 			objecttypename: '=',
-			dataitem: '='
+			dataitem: '=',
+			path: '@',
+			form: '=',
+			submitted: '='
 		},
 		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
 						
@@ -693,6 +752,42 @@ module.component('formFields', {
 						
 						var serviceRootURL = $rootScope.getAPIRootURL();
 						
+						var submittedWatch = $scope.$watch('$ctrl.submitted',
+						  function(newValue) {
+							if (newValue) {
+								if(newValue != '')
+								{
+									$scope.submitted = newValue;
+								}
+								
+								$scope.synchBindings();
+								submittedWatch();
+							}
+						  });
+						  
+						var formWatch = $scope.$watch('$ctrl.form',
+						  function(newValue) {
+							if (newValue) {
+								if(newValue != '')
+								{
+									$scope.form = newValue;
+								}
+								
+								$scope.synchBindings();
+								formWatch();
+							}
+						  });
+						  
+						var pathWatch = $scope.$watch('$ctrl.path',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$scope.path = newValue;
+								
+								$scope.synchBindings();
+								pathWatch();
+							}
+						  });
+						  
 						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
 						  function(newValue) {
 							if (newValue) {
@@ -718,7 +813,7 @@ module.component('formFields', {
 											$scope.synchBindings();
 											
 								  }, function errorCallback(response) {
-										alert(response);
+										$rootScope.showAlert(response.statusText, 'error');
 								  });
 								 
 								objecttypenameWatch();
@@ -738,7 +833,7 @@ module.component('formFields', {
 											var object = $rootScope.createNewObject(objectTypes, self.objecttypename);
 											$scope.data = object;
 								  }, function errorCallback(response) {
-										alert(response);
+										$rootScope.showAlert(response.statusText, 'error');
 								  });
 							}
 						};
@@ -769,7 +864,7 @@ module.component('formFields', {
 											}
 											
 								  }, function errorCallback(response) {
-										alert(response);
+										$rootScope.showAlert(response.statusText, 'error');
 								  });
 							
 						};
@@ -876,11 +971,10 @@ module.component('lookupField', {
 											}).then(function successCallback(response) {
 														$scope.source = response.data;
 											  }, function errorCallback(response) {
-													alert(response);
+													$rootScope.showAlert(response.statusText, 'error');
 											  });
 								}, function errorCallback(response) {
-									// called asynchronously if an error occurs
-									// or server returns response with an error status.
+									$rootScope.showAlert(response.statusText, 'error');
 								  }); 
 								
 								
@@ -890,8 +984,93 @@ module.component('lookupField', {
 					}
 	});
 
-module.config(['$locationProvider', '$routeProvider', function($locationProvider, $routeProvider) {
+module.directive('showErrors', function ($timeout, showErrorsConfig) {
+      var getShowSuccess, linkFn;
+      getShowSuccess = function (options) {
+        var showSuccess;
+        showSuccess = showErrorsConfig.showSuccess;
+        if (options && options.showSuccess != null) {
+          showSuccess = options.showSuccess;
+        }
+        return showSuccess;
+      };
+      linkFn = function (scope, el, attrs, formCtrl) {
+        var blurred, inputEl, inputName, inputNgEl, options, showSuccess, toggleClasses;
+        blurred = false;
+        options = scope.$eval(attrs.showErrors);
+        showSuccess = getShowSuccess(options);
+        inputEl = el[0].querySelector('[name]');
+        inputNgEl = angular.element(inputEl);
+        inputName = eval(inputNgEl.attr('name1'));
+        if (!inputName) {
+          throw 'show-errors element has no child input elements with a \'name\' attribute';
+        }
+        inputNgEl.bind('blur', function () {
+          blurred = true;
+          return toggleClasses(formCtrl[inputName].$invalid);
+        });
+        scope.$watch(function () {
+          return formCtrl[inputName] && formCtrl[inputName].$invalid;
+        }, function (invalid) {
+          if (!blurred) {
+            return;
+          }
+          return toggleClasses(invalid);
+        });
+        scope.$on('show-errors-check-validity', function () {
+          return toggleClasses(formCtrl[inputName].$invalid);
+        });
+        scope.$on('show-errors-reset', function () {
+          return $timeout(function () {
+            el.removeClass('has-error');
+            el.removeClass('has-success');
+            return blurred = false;
+          }, 0, false);
+        });
+        return toggleClasses = function (invalid) {
+          el.toggleClass('has-error', invalid);
+          if (showSuccess) {
+            return el.toggleClass('has-success', !invalid);
+          }
+        };
+      };
+      return {
+        restrict: 'A',
+        require: '^form',
+        compile: function (elem, attrs) {
+          if (!elem.hasClass('form-group')) {
+            throw 'show-errors element does not have the \'form-group\' class';
+          }
+          return linkFn;
+        }
+      };
+    }
+  );
+  
+module.provider('showErrorsConfig', function () {
+    var _showSuccess;
+    _showSuccess = false;
+    this.showSuccess = function (showSuccess) {
+      return _showSuccess = showSuccess;
+    };
+    this.$get = function () {
+      return { showSuccess: _showSuccess };
+    };
+  });
+  
+module.config(['$locationProvider', '$routeProvider', 'NotificationProvider', function($locationProvider, $routeProvider, NotificationProvider) {
   $locationProvider.hashPrefix('!');
+  
+  NotificationProvider.setOptions({
+	templateUrl: 'ui_notification.html',
+	delay: 5000,
+	startTop: 20,
+	startRight: 10,
+	verticalSpacing: 20,
+	horizontalSpacing: 20,
+	positionX: 'center',
+	positionY: 'bottom'
+});
 }]);
 
 	
@@ -923,7 +1102,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 								$rootScope.app = response.data;
 								$rootScope.appId = $rootScope.app._id;
 						}, function errorCallback(response) {
-							alert(response);
+							$rootScope.showAlert(response.statusText, 'error');
 						});
 				}
 				else
@@ -958,7 +1137,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 								$rootScope.app = response.data;
 								$rootScope.appId = $rootScope.app._id;
 						}, function errorCallback(response) {
-							alert(response);
+							$rootScope.showAlert(response.statusText, 'error');
 						});
 				}
 				else
@@ -972,7 +1151,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 					}).then(function successCallback(response) {
 							$scope.page = response.data;
 					}, function errorCallback(response) {
-						alert(response);
+						$rootScope.showAlert(response.statusText, 'error');
 					});
 			}
 	  });

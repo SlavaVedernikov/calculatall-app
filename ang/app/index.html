@@ -36,6 +36,8 @@
 	<link rel="stylesheet" href="bower_components/html5-boilerplate/dist/css/main.css" type="text/css">
 	<link rel="stylesheet" href="components/modal-sidebar/modal-sidebar.css" type="text/css">
 	
+	<link rel="stylesheet" href="bower_components/angular-ui-notification/dist/angular-ui-notification.min.css">
+	
 	<link rel="stylesheet" href="app.css">
 	
 
@@ -104,12 +106,19 @@
     <!-- Metis Menu Plugin JavaScript -->
     <script src="bower_components/metisMenu/dist/metisMenu.js"></script>
 
-    
+    <script src="bower_components/angular-ui-notification/dist/angular-ui-notification.min.js"></script>
 	
 	<!--<script type="text/javascript" src="http://www.w3resource.com/JSON/json.js"></script>-->  
 	<script type="text/javascript" src="http://www.w3resource.com/JSON/jsonpath.js"></script> 
 	
 	<!-- Custom Theme JavaScript -->
     <script src="dist/js/sb-admin-2.js"></script>
+	
+	<script type="text/ng-template" id="ui_notification.html">
+        <div class="ui-notification">
+			<h3 ng-show="title" ng-bind-html="title"></h3>
+			<div class="message" ng-bind-html="message"></div>
+		</div>
+    </script>
 </body>
 </html>
