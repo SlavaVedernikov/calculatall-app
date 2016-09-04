@@ -645,100 +645,7 @@ module.component('formView', {
 	});
 	
 module.component('formFields', {
-		template: 
-		'<div ng-if="data" ng-repeat="field in object_type.fields">' +
-
-			'<div ng-switch on="field.data_type.object_type">' +
-				//string
-				'<div class="animate-switch" ng-switch-when="16b8aa98-d9df-4899-84f0-d31652487abe">' +
-					'<div ng-if="field.data_type.multiplicity==\'many\'" class="form-group">' +
-						'<label>{{field.display_name}}</label>' +
-						'<input ng-model = "data[field.name]" class="form-control" type = "text" ng-list placeholder="{{field.description}}"/>' +
-					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && field.source.length > 0" class="form-group">' +
-						'<label>{{field.display_name}}</label>' +
-						'<select class="form-control" ng-model="data[field.name]" ng-options="item.key as item.display_name for item in field.source"></select>' +
-					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group" show-errors="{showSuccess: true}">' +
-						'<label>{{field.display_name}}</label>' +
-						'<input ng-required="true" ng-model = "data[field.name]" name = "{{path + \'_\' + field.name}}" name1 = "scope.path + \'_\' + scope.field.name" class="form-control" type = "text" placeholder="{{field.description}}"/>' +
-						'<p class="help-block" ng-if="submitted && form[path + \'_\' + field.name].$error.required">\'{{field.display_name}}\' is required</p>' +
-					'</div>' +
-				'</div>' +
-				//large_string
-				'<div class="animate-switch" ng-switch-when="9224d81c-e9a3-4260-8d7e-4f418d8ddaf3">' +
-					'<div class="form-group">' +
-						'<label>{{field.display_name}}</label>' +
-						'<textarea rows="5" ng-model = "data[field.name]" class="form-control" placeholder="{{field.description}}"/>' +
-					'</div>' +
-				'</div>' +
-				//integer
-				'<div class="animate-switch" ng-switch-when="42cbbb31-2bc3-42d4-a695-786920141a5f">' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && field.source && field.source.length > 0" class="form-group">' +
-						'<label>{{field.display_name}}</label>' +
-						'<select class="form-control" ng-model="data[field.name]" ng-options="item.key as item.display_name for item in field.source"></select>' +
-					'</div>' +
-					'<div ng-if="field.data_type.multiplicity==\'one\' && (!field.source || field.source.length == 0)" class="form-group">' +
-						'<label>{{field.display_name}}</label>' +
-						'<input ng-model = "data[field.name]" class="form-control" type = "number" placeholder="{{field.description}}"/>' +
-					'</div>' +
-				'</div>' +
-				//boolean
-				'<div class="animate-switch" ng-switch-when="9498606b-28ad-4c6b-a73e-1b009e2ab734">' +
-					'<div class="form-group">' +
-						'<label>{{field.display_name}}</label>&nbsp;&nbsp;' +
-						'<div class="btn-group">' +
-							'<label class="btn btn-primary" ng-model="data[field.name]" uib-btn-radio="true">Yes</label>' +
-							'<label class="btn btn-primary" ng-model="data[field.name]" uib-btn-radio="false">No</label>' +
-						'</div>' +
-					'</div>' +
-				'</div>' +
-				'<div class="animate-switch" ng-switch-default>' +
-					'<div ng-if="field.data_type.association_type == \'embed\'">' +
-						'<p>' +
-							'<label>{{field.display_name}}</label> &nbsp;' +
-						'</p>' +
-						'<p ng-if="!data[field.name] || (field.data_type.multiplicity == \'many\' && data[field.name].length == 0)">' +
-							'No {{field.display_name}} found.' +
-						'</p>' +
-						'<div ng-if="data[field.name]">' +
-							'<uib-accordion close-others="true">' +
-								'<div uib-accordion-group ng-if="field.data_type.multiplicity == \'many\'" ng-repeat="item in data[field.name]" ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]">' +
-									'<uib-accordion-heading>' +
-										'<button class="btn btn-danger btn-xs pull-right" ng-click="remove(field.name, $index, $event)" ng-show="!status.isOpen">' +
-											'<i class="fa fa-trash-o"></i>' +
-										'</button>' +
-										'<button class="btn btn-primary btn-xs pull-right" ng-click="moveUp(field.name, $index, $event)" ng-show="!status.isOpen && !$first">' +
-											'<i class="fa fa-long-arrow-up"></i>' +
-										'</button>' +
-										'<button class="btn btn-primary btn-xs pull-right" ng-click="moveDown(field.name, $index, $event)" ng-show="!status.isOpen && !$last">' +
-											'<i class="fa fa-long-arrow-down"></i>' +
-										'</button>' +
-										'{{item.display_name ? item.display_name : field.display_name  + \' \' + ($index + 1)}}' +
-									'</uib-accordion-heading>' +
-									'<form-fields objecttypename="field.data_type.object_type" dataitem="item"></form-fields>' +
-								'</div>' +
-								'<div uib-accordion-group ng-if="field.data_type.multiplicity == \'one\' && (field.data_type.association_type == undefined || field.data_type.association_type == \'embed\')" heading="{{field.display_name}}" ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:\'panel-primary\', false:\'panel-default\'}[status.isOpen]">' +
-									'<form-fields objecttypename="field.data_type.object_type" dataitem="data[field.name]"></form-fields>' +
-								'</div>' +
-							'</uib-accordion>' +
-						'</div>' +
-						'<div ng-if="field.data_type.multiplicity == \'many\' || (field.data_type.multiplicity == \'one\' && !data[field.name])">' +
-							'<p>' +
-								'<button class="btn" ng-click="addNew(field.name, field.data_type.object_type, field.data_type.multiplicity)">Add {{field.display_name}}</button>' +
-							'</p>' +
-						'</div>' +
-					'</div>' +
-					
-					
-					'<div ng-if="field.data_type.association_type == \'link\' && field.data_type.multiplicity == \'one\'" class="form-group">' +
-						'<label>{{field.display_name}}</label>' +
-						'<lookup-field objecttypename="field.data_type.object_type" id="(data[field.name] ? data[field.name] : \'\')" dataitem="data" fieldname="field.name"></lookup-field>' +
-					'</div>' +
-					
-				'</div>' +
-				
-			'<div>',
+		templateUrl: 'templates/form-fields.html',
 		bindings: {
 			objecttypename: '=',
 			dataitem: '=',
@@ -842,6 +749,22 @@ module.component('formFields', {
 							return eval('data.' + fieldName);
 						};
 						
+						$scope.addNewObjectLink = function (fieldName, multiplicity)
+						{
+							if(multiplicity == 'many')
+							{
+								if($scope.data[fieldName] == undefined)
+								{
+									$scope.data[fieldName] = []; 
+								}
+								$scope.data[fieldName].push('');
+							}
+							else if(multiplicity == 'one')
+							{
+								$scope.data[fieldName] = '';
+							}
+						}
+						
 						$scope.addNew = function (fieldName, objectTypeName, multiplicity) {
 							$http({
 								  method: 'GET',
@@ -867,6 +790,15 @@ module.component('formFields', {
 										$rootScope.showAlert(response.statusText, 'error');
 								  });
 							
+						};
+						
+						$scope.clear = function(fieldName, e) {
+							if (e) {
+							  e.preventDefault();
+							  e.stopPropagation();
+							}
+
+							$scope.data[fieldName] = null;
 						};
 						
 						$scope.remove = function(fieldName, idx, e) {
@@ -897,14 +829,15 @@ module.component('formFields', {
 					}
 	});
 	
-module.component('lookupField', {
+module.component('linkField', {
 		template: 
-		'<select class="form-control" ng-model="data[field]" ng-options="item._id as item.display_name for item in source"></select>',
+		'<select ng-if="index == -1" class="form-control" ng-model="data[field]" ng-options="item._id as item.display_name for item in source"></select>' +
+		'<select ng-if="index >= 0" class="form-control" ng-model="data[field][index]" ng-options="item._id as item.display_name for item in source"></select>',
 		bindings: {
 			objecttypename: '=',
-			id: '=',
 			dataitem: '=',
-			fieldname: '='
+			fieldname: '=',
+			index: '='
 		},
 		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
 						
@@ -931,15 +864,6 @@ module.component('lookupField', {
 								fieldnameWatch();
 							}
 						  });
-						  
-						var idWatch = $scope.$watch('$ctrl.id',
-						  function(newValue) {
-							if (angular.isString(newValue)) {
-								$scope.synchBindings();
-
-								idWatch();
-							}
-						  });
 						
 						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
 						  function(newValue) {
@@ -949,15 +873,25 @@ module.component('lookupField', {
 								objecttypenameWatch();
 							}
 						  });
+						  
+						var indexWatch = $scope.$watch('$ctrl.index',
+						  function(newValue) {
+							if (angular.isNumber(newValue)) {
+								$scope.synchBindings();	
+								
+								indexWatch();
+							}
+						  });
 						
 						$scope.bindingsSynched = false;
 						
 						$scope.synchBindings = function () {
 						
-							if(angular.isString(self.objecttypename) && angular.isString(self.id) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
+							if(angular.isNumber(self.index) && angular.isString(self.objecttypename) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
 							{
 								$scope.data = self.dataitem;
 								$scope.field = self.fieldname;
+								$scope.index = self.index;
 								
 								$http({
 								method: 'GET',
@@ -970,6 +904,138 @@ module.component('lookupField', {
 											  url: serviceRootURL + '/' + object_type.name
 											}).then(function successCallback(response) {
 														$scope.source = response.data;
+											  }, function errorCallback(response) {
+													$rootScope.showAlert(response.statusText, 'error');
+											  });
+								}, function errorCallback(response) {
+									$rootScope.showAlert(response.statusText, 'error');
+								  }); 
+								
+								
+								$scope.bindingsSynched = true;
+							}
+						};
+					}
+	});
+	
+module.component('delegateField', {
+		templateUrl: 'templates/delegate-field.html',
+		bindings: {
+			objecttypename: '=',
+			dataitem: '=',
+			fieldname: '=',
+			index: '='
+		},
+		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
+						
+						var self = this;
+						
+						var serviceRootURL = $rootScope.getAPIRootURL();
+						
+						$scope.source = null;
+						
+						$scope.delegateChanged = function(e) {
+							if (e) {
+							  e.preventDefault();
+							  e.stopPropagation();
+							}
+							
+							var parameters = [];
+							var delegate = $rootScope.getById($scope.source, $scope.data[$scope.field].id);
+							
+							for(var i = 0; i < delegate.parameters.length; i++)
+							{
+								var parameter = delegate.parameters[i];
+								
+								if(!parameter.is_internal)
+								{
+									var parameter_value = $rootScope.createNewObject($scope.object_types, $scope.parameter_value_object_type._id);
+									
+									parameter_value.name = parameter.name;
+									parameter_value.display_name = parameter.display_name;
+									
+									parameters.push(parameter_value);
+								}
+								
+							}
+							
+							$scope.data[$scope.field].parameters = parameters;
+						};
+						
+						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
+						  function(newValue) {
+							if (newValue) {
+								$scope.synchBindings();
+								
+								dataitemWatch();
+							}
+						  });
+						  
+						var fieldnameWatch = $scope.$watch('$ctrl.fieldname',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$scope.synchBindings();
+
+								fieldnameWatch();
+							}
+						  });
+						
+						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
+						  function(newValue) {
+							if (angular.isString(newValue)) {
+								$scope.synchBindings();	
+								
+								objecttypenameWatch();
+							}
+						  });
+						  
+						var indexWatch = $scope.$watch('$ctrl.index',
+						  function(newValue) {
+							if (angular.isNumber(newValue)) {
+								$scope.synchBindings();	
+								
+								indexWatch();
+							}
+						  });
+						
+						$scope.bindingsSynched = false;
+						
+						$scope.synchBindings = function () {
+						
+							if(angular.isNumber(self.index) && angular.isString(self.objecttypename) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
+							{
+								$scope.data = self.dataitem;
+								$scope.field = self.fieldname;
+								$scope.index = self.index;
+								
+								$http({
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + self.objecttypename
+								}).then(function successCallback(response) {
+											var object_type = response.data;
+											
+											$http({
+											  method: 'GET',
+											  url: serviceRootURL + '/' + object_type.name
+											}).then(function successCallback(response) {
+														$scope.source = response.data;
+														
+														$http({
+															 method: 'GET',
+															 url: serviceRootURL + '/object_types'
+														}).then(function successCallback(response) {
+																	$scope.object_types = response.data;
+																	$http({
+																	  method: 'GET',
+																	  url: serviceRootURL + '/object_types?query=@.name==\'parameter_value\''
+																	}).then(function successCallback(response) {
+																				$scope.parameter_value_object_type = response.data[0];
+																	  }, function errorCallback(response) {
+																			$rootScope.showAlert(response.statusText, 'error');
+																	  });
+															}, function errorCallback(response) {
+																	$rootScope.showAlert(response.statusText, 'error');
+															});
 											  }, function errorCallback(response) {
 													$rootScope.showAlert(response.statusText, 'error');
 											  });
