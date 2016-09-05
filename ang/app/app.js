@@ -68,13 +68,13 @@ module.run(function($rootScope, appSettings, Notification){
 		for (var i = 0; i < data.length; i++) {
 			if(data[i].value == value) return data[i];
 		}
-	}
+	};
 	
 	$rootScope.getByKey = function(data, key){		
 		for (var i = 0; i < data.length; i++) {
 			if(data[i].key == key) return data[i];
 		}
-	}
+	};
 	
 	$rootScope.getUntokenisedString = function(s, token, source){
 		var regex = new RegExp('\\{' + token + '.' + '\\w+\\}', "g");
@@ -87,6 +87,35 @@ module.run(function($rootScope, appSettings, Notification){
 		
 		return s;
 	};
+	
+	$rootScope.getFormattedString = function(str, args) {
+        if (!args)
+            return str;
+
+        for (var arg in args)
+            str = str.replace(RegExp("\\{" + arg + "\\}", "gi"), args[arg]);
+        return str;
+    }
+	
+	$rootScope.getFormErrorFlag = function(validation_rule_definition_name) {
+        var result;
+		
+		switch (validation_rule_definition_name){
+			case 'maximum_length':
+				result = 'maxlength';
+				break;
+			case 'minimum_length':
+				result = 'minlength';
+				break;
+			case 'required':
+				result = 'required';
+				break;
+			default:
+				result = '';
+		}
+		
+		return result;
+    }
 	
 	
 	$rootScope.getAPIRootURL = function(){	
@@ -114,7 +143,7 @@ module.run(function($rootScope, appSettings, Notification){
 			var field = object_type.fields[i];
 			var field_object_type = $rootScope.getById(objectTypes, field.data_type.object_type);
 			
-			if(field_object_type.name == 'string')
+			if(field_object_type.name == 'string' || field_object_type.name == 'large_string')
 			{
 				if(field.data_type.multiplicity == 'one')
 				{
@@ -717,7 +746,16 @@ module.component('formFields', {
 								}).then(function successCallback(response) {
 											$scope.object_type = response.data;
 											
-											$scope.synchBindings();
+											$http({
+											  method: 'GET',
+											  url: serviceRootURL + '/validation_rule_definition'
+											}).then(function successCallback(response) {
+														$scope.validation_rule_definitions = response.data;
+														
+														$scope.synchBindings();
+											  }, function errorCallback(response) {
+													$rootScope.showAlert(response.statusText, 'error');
+											  });
 											
 								  }, function errorCallback(response) {
 										$rootScope.showAlert(response.statusText, 'error');
@@ -727,9 +765,11 @@ module.component('formFields', {
 							}
 						  });
 						 
+						$scope.bindingsSynched = false;
+						
 						$scope.synchBindings = function () {
 						
-							if(angular.isString(self.objecttypename) && self.dataitem == '')
+							if(angular.isString(self.objecttypename) && self.dataitem == '' && !$scope.bindingsSynched)
 							{
 								//objecttypename was set to a valid value and dataitem was set to null
 								$http({
@@ -742,14 +782,72 @@ module.component('formFields', {
 								  }, function errorCallback(response) {
 										$rootScope.showAlert(response.statusText, 'error');
 								  });
+								
+								$scope.bindingsSynched = true;								
+								
 							}
 						};
 						
-						$scope.getFieldValue = function (fieldName) {
+						$scope.getErrorFlag = function(validation_rule_definition_id)
+						{
+							return $rootScope.getFormErrorFlag($rootScope.getById($scope.validation_rule_definitions, validation_rule_definition_id).name);
+						}
+						
+						$scope.getErrorMessage = function(validation_rule, field_value)
+						{
+							var result;
+							var validation_rule_definition = $rootScope.getById($scope.validation_rule_definitions, validation_rule.rule.id)
+							var args = {};
+							
+							for(var i = 0; validation_rule.rule.parameters && i < validation_rule.rule.parameters.length; i++)
+							{
+								var item = validation_rule.rule.parameters[i];
+								var value;
+								
+								if(item.value_type == 'value')
+								{
+									value = item.value;
+								}
+								//TODO: add support for other value types
+								else
+								{
+									value = item.value;
+								}
+								
+								args[item.name] = value;
+							}
+							for(var i = 0; validation_rule_definition.rule_function.parameters && i < validation_rule_definition.rule_function.parameters.length; i++)
+							{
+								var item = validation_rule_definition.rule_function.parameters[i];
+								
+								if(item.is_internal)
+								{
+									var value;
+								
+									if(item.value_type == 'value')
+									{
+										value = item.value;
+									}
+									//TODO: add support for other value types
+									else if(item.value_type == 'expression')
+									{
+										value = eval(item.value.replace('$', 'field_value'));
+									}
+									
+									args[item.name] = value;
+								}
+							}
+							
+							result = $rootScope.getFormattedString(validation_rule_definition.rule_function.message, args);
+							
+							return result;
+						}
+						
+						$scope.getFieldValue = function(fieldName) {
 							return eval('data.' + fieldName);
 						};
 						
-						$scope.addNewObjectLink = function (fieldName, multiplicity)
+						$scope.addNewObjectLink = function(fieldName, multiplicity)
 						{
 							if(multiplicity == 'many')
 							{

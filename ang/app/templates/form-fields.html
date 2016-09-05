@@ -1,4 +1,4 @@
-<div ng-if="data" ng-repeat="field in object_type.fields">
+<div ng-if="data && validation_rule_definitions" ng-repeat="field in object_type.fields">
 
 	<div ng-switch on="field.data_type.object_type">
 		<!--string-->
@@ -11,17 +11,19 @@
 				<label>{{field.display_name}}</label>
 				<select class="form-control" ng-model="data[field.name]" ng-options="item.key as item.display_name for item in field.source"></select>
 			</div>
+			<!--
 			<div ng-if="field.data_type.multiplicity=='one' && (!field.source || field.source.length == 0)" class="form-group">
 				<label>{{field.display_name}}</label>
 				<input ng-model = "data[field.name]" class="form-control" type = "text" placeholder="{{field.description}}"/>
 			</div>
-			<!--
+			-->
+			
 			<div ng-if="field.data_type.multiplicity=='one' && (!field.source || field.source.length == 0)" class="form-group" show-errors="{showSuccess: true}">
 				<label>{{field.display_name}}</label>
 				<input ng-required="true" ng-model = "data[field.name]" name = "{{path + '_' + field.name}}" name1 = "scope.path + '_' + scope.field.name" class="form-control" type = "text" placeholder="{{field.description}}"/>
-				<p class="help-block" ng-if="submitted && form[path + '_' + field.name].$error.required">'{{field.display_name}}' is required</p>
+				<p ng-repeat="item in field.validation_rules track by $index" class="help-block" ng-if="true || submitted && form[path + '_' + field.name].$error[getErrorFlag(item.rule.id)]">{{getErrorMessage(item, data[field.name])}}</p>
 			</div>
-			-->
+			
 		</div>
 		<!--large_string-->
 		<div class="animate-switch" ng-switch-when="9224d81c-e9a3-4260-8d7e-4f418d8ddaf3">
@@ -53,7 +55,7 @@
 		</div>
 		<div class="animate-switch" ng-switch-default>
 			<div ng-if="field.data_type.association_type == 'embed'">
-				<p>
+				<p ng-if="field.data_type.multiplicity == 'many'">
 					<label>{{field.display_name}}</label> &nbsp;
 				</p>
 				<p ng-if="!data[field.name] || (field.data_type.multiplicity == 'many' && data[field.name].length == 0)">
