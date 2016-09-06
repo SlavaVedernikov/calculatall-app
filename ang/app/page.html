@@ -234,7 +234,7 @@
                 <div class="row">
                     <div class="col-lg-12">
                         <h1 class="page-header" ng-bind-template="{{viewTitle}}"> </h1>
-						<div ng-if="page">
+						<div ng-if="page && object_types">
 							<view-title>{{page.display_name}}</view-title>
 								<div ng-repeat="row in page.layout.rows" class="row">
 									<div ng-repeat="column in row.columns" class="col-lg-{{column.size}}">

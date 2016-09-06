@@ -52,6 +52,17 @@ module.run(function($rootScope, appSettings, Notification){
 		Notification({title: titleHtml, message: message}, type);
 	};
 	
+	$rootScope.getLength = function(data){		
+		var result = 0;
+		
+		if(angular.isString(data))
+		{
+			result = data.length;
+		}
+		
+		return result
+	};
+	
 	$rootScope.getById = function(data, id){		
 		for (var i = 0; i < data.length; i++) {
 			if(data[i]._id == id) return data[i];
@@ -289,8 +300,7 @@ module.component('gridView', {
 						self.renderValue = renderValue;
 						self.DTColumnBuilder = DTColumnBuilder;
 						self.DTOptionsBuilder = DTOptionsBuilder;
-						self.dtColumns = columnsPromise();
-						self.object_types = [];
+						
 						self.view_object_type = null;
 						
 						self.view_param = '';
@@ -306,6 +316,8 @@ module.component('gridView', {
 							//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
 							self.view_param += self.view.fields[i].source_path.replace(/\./g,"_");
 						}
+						
+						self.dtColumns = columnsPromise();
 						
 						self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
 							.withPaginationType('full_numbers')
@@ -337,64 +349,55 @@ module.component('gridView', {
 							var serviceRootURL = $rootScope.getAPIRootURL();
 							
 							$http({
-							method: 'GET',
-							url: serviceRootURL + '/object_types'
-							}).then(function successCallback(response) {
-									self.object_types = response.data;
-									
-									$http({
-										method: 'GET',
-										url: serviceRootURL + '/object_types/' + self.view.source_object_type + '/?view=' + self.view_param
-										}).then(function successCallback(response) {
-												self.view_object_type = response.data;
-												
-												var columns = [];
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + self.view.source_object_type + '/?view=' + self.view_param
+								}).then(function successCallback(response) {
+										self.view_object_type = response.data;
 										
-												for(var i = 0; i < self.view.fields.length; i++) {
-													var field_name = self.view.fields[i].source_path.replace(/\./g,"_");
-													var field = $rootScope.getByName(self.view_object_type.fields, field_name);
-													var field_object_type = $rootScope.getById(self.object_types, field.data_type.object_type);
-													
-													var column_type = 'string'
-													
-													if(field_object_type)
-													{
-														switch(field_object_type.name) {
-															case 'string':
-																column_type = 'string';
-																break;
-															case 'integer':
-																column_type = 'num';
-																break;
-															default:
-																column_type = 'string';
-														}
-													}
-													
-													
-													//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
-													var column = self.DTColumnBuilder.newColumn(field_name)
-														.withTitle(self.view.fields[i].display_name)
-														.withOption('defaultContent', 'n/a')
-														//TODO: Change type as per field definition
-														.withOption('type', column_type)
-														.renderWith(self.renderValue);
-
-													columns.push(column);
+										var columns = [];
+								
+										for(var i = 0; i < self.view.fields.length; i++) {
+											var field_name = self.view.fields[i].source_path.replace(/\./g,"_");
+											var field = $rootScope.getByName(self.view_object_type.fields, field_name);
+											var field_object_type = $rootScope.getById($rootScope.object_types, field.data_type.object_type);
+											
+											var column_type = 'string'
+											
+											if(field_object_type)
+											{
+												switch(field_object_type.name) {
+													case 'string':
+														column_type = 'string';
+														break;
+													case 'integer':
+														column_type = 'num';
+														break;
+													default:
+														column_type = 'string';
 												}
-												
-												columns.push(self.DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
-													.renderWith(self.renderActions));
-												
-												dfd.resolve(columns);
-												
-											}, function errorCallback(response) {
-													$rootScope.showAlert(response.statusText, 'error');
-											  });
+											}
+											
+											
+											//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+											var column = self.DTColumnBuilder.newColumn(field_name)
+												.withTitle(self.view.fields[i].display_name)
+												.withOption('defaultContent', 'n/a')
+												//TODO: Change type as per field definition
+												.withOption('type', column_type)
+												.renderWith(self.renderValue);
+
+											columns.push(column);
+										}
+										
+										columns.push(self.DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
+											.renderWith(self.renderActions));
+										
+										dfd.resolve(columns);
+										
+									}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+									  });
 									
-								}, function errorCallback(response) {
-										$rootScope.showAlert(response.statusText, 'error');
-								  });
 							
 							return dfd.promise;	  
 						}
@@ -557,7 +560,7 @@ module.component('formView', {
 				'<div class="panel panel-default">' +
 					'<div class="panel-body">' +
 						'<form name = "formView">' +
-							'<form-fields objecttypename="object_type._id" dataitem="data" path="" form="userForm" submitted="submitted"></form-fields>' +
+							'<form-fields objecttypename="object_type._id" dataitem="data" path="path" form="userForm" submitted="submitted"></form-fields>' +
 						'</form>' +
 					'</div>' +
 				'</div>' +
@@ -572,6 +575,8 @@ module.component('formView', {
 						var self = this;
 						$scope.submitted = false;
 						var serviceRootURL = $rootScope.getAPIRootURL();
+						
+						$scope.path = '@';
 						
 						$http({
 							method: 'GET',
@@ -592,17 +597,7 @@ module.component('formView', {
 										}
 										else
 										{
-											$http({
-												 method: 'GET',
-												 url: serviceRootURL + '/object_types'
-											}).then(function successCallback(response) {
-														var objectTypes = response.data;
-														var object = $rootScope.createNewObject(objectTypes, $rootScope.object_type);
-														
-														$scope.data = object;
-												}, function errorCallback(response) {
-														$rootScope.showAlert(response.statusText, 'error');
-												});
+											$scope.data = $rootScope.createNewObject($rootScope.object_types, $rootScope.object_type);
 										}
 							}, function errorCallback(response) {
 								$rootScope.showAlert(response.statusText, 'error');
@@ -612,9 +607,98 @@ module.component('formView', {
 							return eval('data.' + fieldName);
 						};
 						
+						$scope.validate = function(userForm, data, object_type, path)
+						{
+							var validator = $rootScope;
+							
+							for(var i = 0; object_type.fields && i < object_type.fields.length; i++)
+							{
+								var field = object_type.fields[i];
+								var field_path = path + '@' + field.name;
+								
+								for(var j = 0; field.validation_rules && j < field.validation_rules.length; j++)
+								{
+									var validation_rule = field.validation_rules[j];
+									var validation_rule_definition = $rootScope.getById($rootScope.validation_rule_definitions, validation_rule.rule.id);
+									var args = {};
+									var expression = validation_rule_definition.rule_function.expression;
+									
+									for(var k = 0; validation_rule_definition.rule_function.parameters && 
+									k < validation_rule_definition.rule_function.parameters.length; k++)
+									{
+										var parameter = validation_rule_definition.rule_function.parameters[k];
+										var value;
+										
+										if(!parameter.is_internal && validation_rule.rule.parameters)
+										{
+											var parameter_value = $rootScope.getByName(validation_rule.rule.parameters, parameter.name);
+											
+											if(parameter_value)
+											{								
+												if(parameter_value.value_type == 'value')
+												{
+													value = parameter_value.value;
+												}
+												else if(parameter_value.value_type == 'field_value')
+												{
+													value = data[field.name];
+												}
+											}
+										}
+										else
+										{								
+											if(parameter.value_type == 'value')
+											{
+												value = parameter.value;
+											}
+											else if(parameter.value_type == 'field_value')
+											{
+												value = data[field.name];
+											}
+											else if(parameter.value_type == 'expression')
+											{
+												value = eval(parameter.value.replace('$', 'data[field.name]'));
+											}
+										}
+										
+										args[parameter.name] = value;
+									}
+									
+									expression = $rootScope.getFormattedString(expression, args).replace('$', 'data[field.name]');
+									var result = eval(expression);
+									
+									userForm[field_path].$error[$rootScope.getFormErrorFlag(validation_rule_definition.name)] = (typeof result == "boolean" && !result) ? true : false;
+									
+									userForm[field_path].$invalid = (!userForm[field_path].$invalid && typeof result == "boolean" && !result) ? true : userForm[field_path].$invalid;
+									
+									userForm.$valid = ($scope.userForm.$valid && typeof result == "boolean" && !result) ? false : $scope.userForm.$valid;
+									
+								}
+								
+								if(data[field.name] && field.data_type.association_type == 'embed')
+								{
+									var field_object_type = $rootScope.getById($rootScope.object_types, field.data_type.object_type);
+									
+									if(field.data_type.multiplicity == "many")
+									{
+										for(var l = 0; l < data[field.name].length; l++)
+										{
+											$scope.validate(userForm, data[field.name][l], field_object_type, field_path + '@' + l);
+										}
+									}
+									else if(field.data_type.multiplicity == "one")
+									{
+										$scope.validate(userForm, data[field.name], field_object_type, field_path);
+									}
+								}
+							}
+						}
+						
 						$scope.ok = function () {
-							$scope.$broadcast('show-errors-check-validity');
 							$scope.submitted = true;
+							$scope.$broadcast('show-errors-check-validity');
+							
+							$scope.validate($scope.userForm, $scope.data, $scope.object_type, '@');
 							
 							if ($scope.userForm.$valid) {
 								$http({
@@ -678,7 +762,7 @@ module.component('formFields', {
 		bindings: {
 			objecttypename: '=',
 			dataitem: '=',
-			path: '@',
+			path: '=',
 			form: '=',
 			submitted: '='
 		},
@@ -690,12 +774,7 @@ module.component('formFields', {
 						
 						var submittedWatch = $scope.$watch('$ctrl.submitted',
 						  function(newValue) {
-							if (newValue) {
-								if(newValue != '')
-								{
-									$scope.submitted = newValue;
-								}
-								
+							if (newValue) {								
 								$scope.synchBindings();
 								submittedWatch();
 							}
@@ -703,12 +782,7 @@ module.component('formFields', {
 						  
 						var formWatch = $scope.$watch('$ctrl.form',
 						  function(newValue) {
-							if (newValue) {
-								if(newValue != '')
-								{
-									$scope.form = newValue;
-								}
-								
+							if (newValue) {								
 								$scope.synchBindings();
 								formWatch();
 							}
@@ -716,9 +790,7 @@ module.component('formFields', {
 						  
 						var pathWatch = $scope.$watch('$ctrl.path',
 						  function(newValue) {
-							if (angular.isString(newValue)) {
-								$scope.path = newValue;
-								
+							if (angular.isString(newValue)) {								
 								$scope.synchBindings();
 								pathWatch();
 							}
@@ -746,16 +818,9 @@ module.component('formFields', {
 								}).then(function successCallback(response) {
 											$scope.object_type = response.data;
 											
-											$http({
-											  method: 'GET',
-											  url: serviceRootURL + '/validation_rule_definition'
-											}).then(function successCallback(response) {
-														$scope.validation_rule_definitions = response.data;
+											$scope.validation_rule_definitions = $rootScope.validation_rule_definitions;
 														
-														$scope.synchBindings();
-											  }, function errorCallback(response) {
-													$rootScope.showAlert(response.statusText, 'error');
-											  });
+											$scope.synchBindings();
 											
 								  }, function errorCallback(response) {
 										$rootScope.showAlert(response.statusText, 'error');
@@ -769,34 +834,38 @@ module.component('formFields', {
 						
 						$scope.synchBindings = function () {
 						
-							if(angular.isString(self.objecttypename) && self.dataitem == '' && !$scope.bindingsSynched)
+							if(typeof self.submitted == "boolean" && self.form && angular.isString(self.path) && angular.isString(self.objecttypename) && !$scope.bindingsSynched)
 							{
-								//objecttypename was set to a valid value and dataitem was set to null
-								$http({
-								  method: 'GET',
-								  url: serviceRootURL + '/object_types'
-								}).then(function successCallback(response) {
-											var objectTypes = response.data;
-											var object = $rootScope.createNewObject(objectTypes, self.objecttypename);
-											$scope.data = object;
-								  }, function errorCallback(response) {
-										$rootScope.showAlert(response.statusText, 'error');
-								  });
+								$scope.submitted = self.submitted;
+								$scope.form = self.form;
+								$scope.path = self.path;
+								
+								if(self.dataitem == '')
+								{
+									//objecttypename was set to a valid value and dataitem was set to null
+									$scope.data = $rootScope.createNewObject($rootScope.object_types, self.objecttypename);
+								}
 								
 								$scope.bindingsSynched = true;								
-								
 							}
 						};
 						
-						$scope.getErrorFlag = function(validation_rule_definition_id)
-						{
-							return $rootScope.getFormErrorFlag($rootScope.getById($scope.validation_rule_definitions, validation_rule_definition_id).name);
-						}
-						
-						$scope.getErrorMessage = function(validation_rule, field_value)
+						$scope.getErrorFlag = function(validation_rule)
 						{
 							var result;
 							var validation_rule_definition = $rootScope.getById($scope.validation_rule_definitions, validation_rule.rule.id)
+							
+							result = $rootScope.getFormErrorFlag(validation_rule_definition.name);
+							
+							return result;
+						}
+						
+						$scope.getErrorMessage = function(validation_rule, data, field_name)
+						{
+							var result;
+							var validator = $rootScope;
+							
+							var validation_rule_definition = $rootScope.getById($scope.validation_rule_definitions, validation_rule.rule.id);
 							var args = {};
 							
 							for(var i = 0; validation_rule.rule.parameters && i < validation_rule.rule.parameters.length; i++)
@@ -808,10 +877,9 @@ module.component('formFields', {
 								{
 									value = item.value;
 								}
-								//TODO: add support for other value types
-								else
+								else if(item.value_type == 'field_value')
 								{
-									value = item.value;
+									value = data[field_name];
 								}
 								
 								args[item.name] = value;
@@ -828,10 +896,13 @@ module.component('formFields', {
 									{
 										value = item.value;
 									}
-									//TODO: add support for other value types
+									else if(item.value_type == 'field_value')
+									{
+										value = data[field_name];
+									}
 									else if(item.value_type == 'expression')
 									{
-										value = eval(item.value.replace('$', 'field_value'));
+										value = eval(item.value.replace('$', 'data[field_name]'));
 									}
 									
 									args[item.name] = value;
@@ -864,29 +935,21 @@ module.component('formFields', {
 						}
 						
 						$scope.addNew = function (fieldName, objectTypeName, multiplicity) {
-							$http({
-								  method: 'GET',
-								  url: serviceRootURL + '/object_types'
-								}).then(function successCallback(response) {
-											var objectTypes = response.data;
-											var object = $rootScope.createNewObject(objectTypes, objectTypeName);
-											
-											if(multiplicity == 'many')
-											{
-												if($scope.data[fieldName] == undefined)
-												{
-													$scope.data[fieldName] = []; 
-												}
-												$scope.data[fieldName].push(object);
-											}
-											else if(multiplicity == 'one')
-											{
-												$scope.data[fieldName] = object;
-											}
-											
-								  }, function errorCallback(response) {
-										$rootScope.showAlert(response.statusText, 'error');
-								  });
+
+							var object = $rootScope.createNewObject($rootScope.object_types, objectTypeName);
+							
+							if(multiplicity == 'many')
+							{
+								if($scope.data[fieldName] == undefined)
+								{
+									$scope.data[fieldName] = []; 
+								}
+								$scope.data[fieldName].push(object);
+							}
+							else if(multiplicity == 'one')
+							{
+								$scope.data[fieldName] = object;
+							}
 							
 						};
 						
@@ -1022,7 +1085,10 @@ module.component('delegateField', {
 			objecttypename: '=',
 			dataitem: '=',
 			fieldname: '=',
-			index: '='
+			index: '=',
+			path: '=',
+			form: '=',
+			submitted: '='
 		},
 		controller: function ($routeParams, $scope, $http, $rootScope, appSettings) {
 						
@@ -1047,7 +1113,7 @@ module.component('delegateField', {
 								
 								if(!parameter.is_internal)
 								{
-									var parameter_value = $rootScope.createNewObject($scope.object_types, $scope.parameter_value_object_type._id);
+									var parameter_value = $rootScope.createNewObject($rootScope.object_types, $scope.parameter_value_object_type._id);
 									
 									parameter_value.name = parameter.name;
 									parameter_value.display_name = parameter.display_name;
@@ -1060,11 +1126,34 @@ module.component('delegateField', {
 							$scope.data[$scope.field].parameters = parameters;
 						};
 						
+						var submittedWatch = $scope.$watch('$ctrl.submitted',
+						  function(newValue) {
+							if (newValue) {								
+								$scope.synchBindings();
+								submittedWatch();
+							}
+						  });
+						  
+						var formWatch = $scope.$watch('$ctrl.form',
+						  function(newValue) {
+							if (newValue) {								
+								$scope.synchBindings();
+								formWatch();
+							}
+						  });
+						  
+						var pathWatch = $scope.$watch('$ctrl.path',
+						  function(newValue) {
+							if (angular.isString(newValue)) {								
+								$scope.synchBindings();
+								pathWatch();
+							}
+						  });
+						  
 						var dataitemWatch = $scope.$watch('$ctrl.dataitem',
 						  function(newValue) {
 							if (newValue) {
 								$scope.synchBindings();
-								
 								dataitemWatch();
 							}
 						  });
@@ -1073,7 +1162,6 @@ module.component('delegateField', {
 						  function(newValue) {
 							if (angular.isString(newValue)) {
 								$scope.synchBindings();
-
 								fieldnameWatch();
 							}
 						  });
@@ -1082,7 +1170,6 @@ module.component('delegateField', {
 						  function(newValue) {
 							if (angular.isString(newValue)) {
 								$scope.synchBindings();	
-								
 								objecttypenameWatch();
 							}
 						  });
@@ -1100,11 +1187,14 @@ module.component('delegateField', {
 						
 						$scope.synchBindings = function () {
 						
-							if(angular.isNumber(self.index) && angular.isString(self.objecttypename) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
+							if(typeof self.submitted == "boolean" && self.form && angular.isString(self.path) && angular.isNumber(self.index) && angular.isString(self.objecttypename) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
 							{
+								$scope.submitted = self.submitted;
+								$scope.form = self.form;
+								$scope.path = self.path;
+								$scope.index = self.index;
 								$scope.data = self.dataitem;
 								$scope.field = self.fieldname;
-								$scope.index = self.index;
 								
 								$http({
 								method: 'GET',
@@ -1119,21 +1209,14 @@ module.component('delegateField', {
 														$scope.source = response.data;
 														
 														$http({
-															 method: 'GET',
-															 url: serviceRootURL + '/object_types'
-														}).then(function successCallback(response) {
-																	$scope.object_types = response.data;
-																	$http({
-																	  method: 'GET',
-																	  url: serviceRootURL + '/object_types?query=@.name==\'parameter_value\''
-																	}).then(function successCallback(response) {
-																				$scope.parameter_value_object_type = response.data[0];
-																	  }, function errorCallback(response) {
-																			$rootScope.showAlert(response.statusText, 'error');
-																	  });
+															method: 'GET',
+															url: serviceRootURL + '/object_types?query=@.name==\'parameter_value\''
+															}).then(function successCallback(response) {
+																	$scope.parameter_value_object_type = response.data[0];
 															}, function errorCallback(response) {
-																	$rootScope.showAlert(response.statusText, 'error');
+																$rootScope.showAlert(response.statusText, 'error');
 															});
+															
 											  }, function errorCallback(response) {
 													$rootScope.showAlert(response.statusText, 'error');
 											  });
@@ -1158,7 +1241,7 @@ module.directive('showErrors', function ($timeout, showErrorsConfig) {
         }
         return showSuccess;
       };
-      linkFn = function (scope, el, attrs, formCtrl) {
+      linkFn = function (scope, el, attrs, formCtrl, $injector) {
         var blurred, inputEl, inputName, inputNgEl, options, showSuccess, toggleClasses;
         blurred = false;
         options = scope.$eval(attrs.showErrors);
@@ -1314,6 +1397,25 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 					url: serviceRootURL + '/page/' + $routeParams.page
 					}).then(function successCallback(response) {
 							$scope.page = response.data;
+					}, function errorCallback(response) {
+						$rootScope.showAlert(response.statusText, 'error');
+					});
+					
+				$http({
+					method: 'GET',
+					url: serviceRootURL + '/object_types'
+					}).then(function successCallback(response) {
+							$rootScope.object_types = response.data;
+							$scope.object_types = $rootScope.object_types
+					}, function errorCallback(response) {
+						$rootScope.showAlert(response.statusText, 'error');
+					});
+								  
+				$http({
+					method: 'GET',
+					url: serviceRootURL + '/validation_rule_definition'
+					}).then(function successCallback(response) {
+							$rootScope.validation_rule_definitions = response.data;
 					}, function errorCallback(response) {
 						$rootScope.showAlert(response.statusText, 'error');
 					});
