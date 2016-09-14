@@ -9,7 +9,7 @@
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="index.html">SB Admin v2.0</a>
+                <a class="navbar-brand" href="index.html">{{appName}}</a>
             </div>
             <!-- /.navbar-header -->
 
@@ -239,23 +239,31 @@
 								<div ng-repeat="row in page.layout.rows" class="row">
 									<div ng-repeat="column in row.columns" class="col-lg-{{column.size}}">
 										<div ng-repeat="container in column.containers">
-											<ul ng-hide="container.tabs == undefined || container.tabs.length == 0" id="tabs" class="nav nav-tabs" data-tabs="tabs">
+											
+											<ul ng-if="container.tabs != undefined && container.tabs.length > 0" id="tabs" class="nav nav-tabs" data-tabs="tabs">
 												<li ng-repeat="tab in container.tabs" ng-class="{'active': $index==0}">
 													'<a href="/#{{tab.name}}" data-toggle="tab">{{tab.display_name}}</a>
 												</li>
 											</ul>
-											<div class="tab-content">
-												<div ng-repeat="view in container.views" ng:class="{true:'tab-pane active', false:'tab-pane'}[$index==0]" id="{{view.tab}}">
-													<p>
-														<p>This is a description of {{getByName(page.views, view.view).display_name}}</p>
-													</p>
+														
+											<div ng-if="container.tabs != undefined && container.tabs.length > 0" class="tab-content">
+												<div ng-repeat="component in container.views" ng:class="{true:'tab-pane active', false:'tab-pane'}[$index==0]" id="{{component.tab}}">
+														<ng-include src="getAPIRootURL() + '/templates/table-view'"></ng-include>
+														
+														<!--<ng-include src="'table-view.html'"></ng-include>-->
+														<!--<table-view view="getByName(page.views, component.view)"></table-view>-->
+												</div>
+											</div>
+											
+											<div ng-if="container.tabs == undefined || container.tabs.length == 0" ng-repeat="component in container.views">
 													<div class="panel panel-default">
-														<div class="panel-heading">{{getByName(page.views, view.view).display_name}}</div>
+														<div class="panel-heading">{{getByName(page.views, component.view).display_name}}</div>
 														<div class="panel-body">
-															<grid-view view="getByName(page.views, view.view)"></grid-view>
+															<!--<ng-include src="getAPIRootURL() + '/templates/table-view'"></ng-include>-->
+															<!--<ng-include src="'table-view.html'"></ng-include>-->
+															<table-view view="getByName(page.views, component.view)"></table-view>
 														</div>
 													</div>
-												</div>
 											</div>
 										</div>
 									</div>

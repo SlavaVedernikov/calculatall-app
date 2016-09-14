@@ -1,12 +1,17 @@
-<select class="form-control" ng-model="data[field].id" ng-options="item._id as item.display_name for item in source" ng-change="delegateChanged($event)"></select>
-<br/>
-<p ng-if="data[field].parameters && data[field].parameters.length > 0">
-	<label>Parameters</label>
-</p>
-
-<uib-accordion ng-if="data[field].parameters && data[field].parameters.length > 0" close-others="true">
-	<div uib-accordion-group ng-repeat="item in data[field].parameters track by $index" ng-init="status = {isOpen: false}" is-open="status.isOpen" ng-class="{true:'panel-primary', false:'panel-default'}[status.isOpen]">
-		<uib-accordion-heading>{{item.display_name ? item.display_name : 'Parameter ' + ($index + 1)}}</uib-accordion-heading>
-		<form-fields objecttypename="parameter_value_object_type._id" dataitem="item"></form-fields>
-	</div>
-</uib-accordion>
+<div ng-if="data && path">
+	<!--
+	<select class="form-control" ng-model="data[field].id" ng-options="item._id as item.display_name for item in source" ng-change="delegateChanged($event)"></select>
+	-->
+	<select ng-if="index == -1" class="form-control" ng-model="data[field].id" ng-options="item._id as item.display_name for item in source" ng-change="delegateChanged($event)"></select>
+	<select ng-if="index >= 0" class="form-control" ng-model="data[field][index].id" ng-options="item._id as item.display_name for item in source" ng-change="delegateChanged($event)"></select>
+	<br />
+	<uib-accordion ng-if="(index == -1 && data[field].parameters) || (index >= 0 && data[field][index].parameters)">
+		<div uib-accordion-group ng-init="status = {isOpen: true}" is-open="status.isOpen" ng-class="{true:'panel-primary', false:'panel-default'}[status.isOpen]">
+			<uib-accordion-heading>
+				Parameters
+			</uib-accordion-heading>
+			<form-fields ng-if="index == -1" objecttype="delegate_object_type" dataitem="data[field].parameters" path="path + '@' + field.name" form="form" submitted="submitted"></form-fields>
+			<form-fields ng-if="index >= 0" objecttype="delegate_object_type" dataitem="data[field][index].parameters" path="path + '@' + field.name" form="form" submitted="submitted"></form-fields>
+		</div>
+	</uib-accordion>	
+</div>

@@ -1,7 +1,14 @@
 'use strict';
 
-angular.module('myApp.settings', []).constant('appSettings', {serviceRootURL: 'http://127.0.0.1:8181'});
-								  
+var env = {};
+
+// Import variables if present (from env*.js)
+if(window){  
+  Object.assign(env, window.__env);
+}
+
+angular.module('myApp.settings', []).constant('appSettings', env);
+						  
 // Declare app level module which depends on views, and components
 var module = angular.module('myApp', [
   'ngRoute',
@@ -15,6 +22,7 @@ var module = angular.module('myApp', [
   'myApp.settings',
   'myApp.moduleLoader'
 ]);
+ 
 
 var modalInstance = {};
 var object_type = '';
@@ -24,6 +32,23 @@ var application = '';
 var tenant = '';
 
 module.run(function($rootScope, appSettings, Notification){
+	
+	$rootScope.getAPIRootURL = function(){	
+		var result = '';
+		
+		if($rootScope.app)
+		{
+			result = appSettings.serviceRootURL + '/' + $rootScope.tenant + '/' + $rootScope.app.name + '/' + $rootScope.tenant;
+		}
+		else
+		{
+			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/' + $rootScope.tenant;
+		}
+		
+
+		return result;
+	};
+	
 	$rootScope.showAlert = function(message, type){	
 		var title;
 		var icon = '';
@@ -106,7 +131,7 @@ module.run(function($rootScope, appSettings, Notification){
         for (var arg in args)
             str = str.replace(RegExp("\\{" + arg + "\\}", "gi"), args[arg]);
         return str;
-    }
+    };
 	
 	$rootScope.getFormErrorFlag = function(validation_rule_definition_name) {
         var result;
@@ -126,33 +151,21 @@ module.run(function($rootScope, appSettings, Notification){
 		}
 		
 		return result;
-    }
+    };
 	
-	
-	$rootScope.getAPIRootURL = function(){	
-		var result = '';
-		
-		if($rootScope.app)
-		{
-			result = appSettings.serviceRootURL + '/' + $rootScope.tenant + '/' + $rootScope.app.name + '/' + $rootScope.tenant;
-		}
-		else
-		{
-			result = appSettings.serviceRootURL + '/' + $rootScope.owner + '/' + $rootScope.application + '/' + $rootScope.tenant;
-		}
-		
-
-		return result;
+	$rootScope.createNewObjectOfTypeId = function(object_type_id) {
+		var object_type = $rootScope.getById($rootScope.object_types, object_type_id);
+		return $rootScope.createNewObjectOfType(object_type);
 	};
 	
-	$rootScope.createNewObject = function(objectTypes, objectType){	
-		var object_type = $rootScope.getById(objectTypes, objectType);
-		var result = {};
+	$rootScope.createNewObjectOfType = function(object_type){	
+		
+		var result = (object_type.fields && object_type.fields.length > 0) ? {} : null;
 		
 		for(var i = 0; object_type.fields && i < object_type.fields.length; i ++)
 		{
 			var field = object_type.fields[i];
-			var field_object_type = $rootScope.getById(objectTypes, field.data_type.object_type);
+			var field_object_type = $rootScope.getById($rootScope.object_types, field.data_type.object_type);
 			
 			if(field_object_type.name == 'string' || field_object_type.name == 'large_string')
 			{
@@ -207,10 +220,10 @@ module.run(function($rootScope, appSettings, Notification){
 					{
 						if(field.data_type.association_type == 'embed')
 						{
-							object = $rootScope.createNewObject(objectTypes, field.data_type.object_type);
+							object = $rootScope.createNewObjectOfTypeId(field.data_type.object_type);
 							result[field.name] = object;
 						}
-						else if(field.data_type.association_type == 'link')
+						else if(field.data_type.association_type == 'link' || field.data_type.association_type == 'delegate')
 						{
 							result[field.name] = field.default ? field.default : '';
 						}
@@ -279,7 +292,7 @@ module.component('navigationView', {
 						
 	});
 
-module.component('gridView', {
+module.component('tableView', {
 		template: '<div>' +
 			'<table datatable="" dt-options="$ctrl.dtOptions" dt-columns="$ctrl.dtColumns" dt-instance="$ctrl.dtIntanceCallback" class="row-border hover"></table>' +
 			'</div>',
@@ -321,7 +334,8 @@ module.component('gridView', {
 						
 						self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
 							.withPaginationType('full_numbers')
-							.withDisplayLength(Number(self.view.page_size))
+							//Set default page size to 10
+							.withDisplayLength((self.view.page_size) ? Number(self.view.page_size) : 10)
 							//.withDisplayLength(10)
 							.withOption('createdRow', createdRow)
 							//.withOption('responsive', true)
@@ -357,6 +371,7 @@ module.component('gridView', {
 										var columns = [];
 								
 										for(var i = 0; i < self.view.fields.length; i++) {
+											//TODO: Change to use '@' as path field separator
 											var field_name = self.view.fields[i].source_path.replace(/\./g,"_");
 											var field = $rootScope.getByName(self.view_object_type.fields, field_name);
 											var field_object_type = $rootScope.getById($rootScope.object_types, field.data_type.object_type);
@@ -382,7 +397,6 @@ module.component('gridView', {
 											var column = self.DTColumnBuilder.newColumn(field_name)
 												.withTitle(self.view.fields[i].display_name)
 												.withOption('defaultContent', 'n/a')
-												//TODO: Change type as per field definition
 												.withOption('type', column_type)
 												.renderWith(self.renderValue);
 
@@ -528,21 +542,19 @@ module.component('gridView', {
 						function renderValue(data, type, full, meta) {
 							var result = data;
 							
-							if(type == "display")
+							var field = self.view_object_type.fields[meta.col];
+							var field_valueLookup;
+													
+							if(field.source)
 							{
-								var field = self.view_object_type.fields[meta.col];
-								var field_valueLookup;
-														
-								if(field.source)
-								{
-									field_valueLookup = $rootScope.getByValue(field.source, data);
-								}
-								
-								if(field_valueLookup)
-								{
-									result = field_valueLookup.display_name;
-								}
+								field_valueLookup = $rootScope.getByKey(field.source, data);
 							}
+							
+							if(field_valueLookup)
+							{
+								result = (type == 'sort') ? field_valueLookup.value : field_valueLookup.display_name;
+							}
+							
 							
 							return result;
 						}
@@ -560,7 +572,7 @@ module.component('formView', {
 				'<div class="panel panel-default">' +
 					'<div class="panel-body">' +
 						'<form name = "formView">' +
-							'<form-fields objecttypename="object_type._id" dataitem="data" path="path" form="userForm" submitted="submitted"></form-fields>' +
+							'<form-fields objecttype="object_type._id" dataitem="data" path="path" form="userForm" submitted="submitted"></form-fields>' +
 						'</form>' +
 					'</div>' +
 				'</div>' +
@@ -597,7 +609,7 @@ module.component('formView', {
 										}
 										else
 										{
-											$scope.data = $rootScope.createNewObject($rootScope.object_types, $rootScope.object_type);
+											$scope.data = $rootScope.createNewObjectOfTypeId($rootScope.object_type);
 										}
 							}, function errorCallback(response) {
 								$rootScope.showAlert(response.statusText, 'error');
@@ -627,37 +639,44 @@ module.component('formView', {
 									k < validation_rule_definition.rule_function.parameters.length; k++)
 									{
 										var parameter = validation_rule_definition.rule_function.parameters[k];
+										var parameter_object_type = $rootScope.getById($rootScope.object_types, parameter.data_type.object_type);
 										var value;
 										
-										if(!parameter.is_internal && validation_rule.rule.parameters)
+										if(parameter_object_type)
 										{
-											var parameter_value = $rootScope.getByName(validation_rule.rule.parameters, parameter.name);
-											
-											if(parameter_value)
-											{								
-												if(parameter_value.value_type == 'value')
-												{
-													value = parameter_value.value;
+											if(!parameter.hidden && validation_rule.rule.parameters)
+											{
+												var parameter_value = validation_rule.rule.parameters[parameter.name];
+												
+												if(parameter_value)
+												{			
+													if(parameter_object_type.name == 'field_value')
+													{
+														value = data[parameter_value];
+													}
+													else
+													{
+														value = parameter_value;
+													}
 												}
-												else if(parameter_value.value_type == 'field_value')
+											}
+											else
+											{														
+												if(parameter.default)
 												{
-													value = data[field.name];
-												}
-											}
-										}
-										else
-										{								
-											if(parameter.value_type == 'value')
-											{
-												value = parameter.value;
-											}
-											else if(parameter.value_type == 'field_value')
-											{
-												value = data[field.name];
-											}
-											else if(parameter.value_type == 'expression')
-											{
-												value = eval(parameter.value.replace('$', 'data[field.name]'));
+													if(parameter_object_type.name == 'expression')
+													{
+														value = eval(parameter.default.replace('$', 'data[field.name]'));
+													}
+													else if(parameter_object_type.name == 'field_value')
+													{
+														value = data[parameter.default];
+													}
+													else
+													{
+														value = parameter.default;
+													}
+												}												
 											}
 										}
 										
@@ -696,9 +715,10 @@ module.component('formView', {
 						
 						$scope.ok = function () {
 							$scope.submitted = true;
-							$scope.$broadcast('show-errors-check-validity');
 							
 							$scope.validate($scope.userForm, $scope.data, $scope.object_type, '@');
+							
+							$scope.$broadcast('show-errors-check-validity');
 							
 							if ($scope.userForm.$valid) {
 								$http({
@@ -760,7 +780,7 @@ module.component('formView', {
 module.component('formFields', {
 		templateUrl: 'templates/form-fields.html',
 		bindings: {
-			objecttypename: '=',
+			objecttype: '=',
 			dataitem: '=',
 			path: '=',
 			form: '=',
@@ -776,7 +796,7 @@ module.component('formFields', {
 						  function(newValue) {
 							if (newValue) {								
 								$scope.synchBindings();
-								submittedWatch();
+								//submittedWatch();
 							}
 						  });
 						  
@@ -784,7 +804,7 @@ module.component('formFields', {
 						  function(newValue) {
 							if (newValue) {								
 								$scope.synchBindings();
-								formWatch();
+								//formWatch();
 							}
 						  });
 						  
@@ -792,7 +812,7 @@ module.component('formFields', {
 						  function(newValue) {
 							if (angular.isString(newValue)) {								
 								$scope.synchBindings();
-								pathWatch();
+								//pathWatch();
 							}
 						  });
 						  
@@ -805,36 +825,43 @@ module.component('formFields', {
 								}
 								
 								$scope.synchBindings();
-								dataitemWatch();
+								//dataitemWatch();
 							}
 						  });
 						
-						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
+						var objecttypeWatch = $scope.$watch('$ctrl.objecttype',
 						  function(newValue) {
-							if (angular.isString(newValue)) {
-								$http({
-								  method: 'GET',
-								  url: serviceRootURL + '/object_types/' + newValue
-								}).then(function successCallback(response) {
-											$scope.object_type = response.data;
-											
-											$scope.validation_rule_definitions = $rootScope.validation_rule_definitions;
+							if(newValue)
+							{
+								if (angular.isString(newValue)) {
+									//Expected object type id
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/object_types/' + newValue
+										}).then(function successCallback(response) {
+												$scope.object_type = response.data;											
+										}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+										});
+								}
+								else {
+									//expected object type
+									$scope.object_type = newValue;
+								}
+									
+								$scope.validation_rule_definitions = $rootScope.validation_rule_definitions;
 														
-											$scope.synchBindings();
-											
-								  }, function errorCallback(response) {
-										$rootScope.showAlert(response.statusText, 'error');
-								  });
-								 
-								objecttypenameWatch();
+								$scope.synchBindings();
+								//objecttypeWatch();
 							}
 						  });
 						 
 						$scope.bindingsSynched = false;
 						
+						//TODO: Consider using this.$onInit = function() {}
 						$scope.synchBindings = function () {
 						
-							if(typeof self.submitted == "boolean" && self.form && angular.isString(self.path) && angular.isString(self.objecttypename) && !$scope.bindingsSynched)
+							if(typeof self.submitted == "boolean" && self.form && angular.isString(self.path) && self.objecttype && !$scope.bindingsSynched)
 							{
 								$scope.submitted = self.submitted;
 								$scope.form = self.form;
@@ -842,8 +869,10 @@ module.component('formFields', {
 								
 								if(self.dataitem == '')
 								{
-									//objecttypename was set to a valid value and dataitem was set to null
-									$scope.data = $rootScope.createNewObject($rootScope.object_types, self.objecttypename);
+									//objecttype was set to a valid value and dataitem was set to null
+									var object_type_id = (angular.isString(self.objecttype)) ? self.objecttype : self.objecttype._id;
+									
+									$scope.data = $rootScope.createNewObjectOfTypeId(object_type_id);
 								}
 								
 								$scope.bindingsSynched = true;								
@@ -932,11 +961,27 @@ module.component('formFields', {
 							{
 								$scope.data[fieldName] = '';
 							}
+						};
+						
+						$scope.addNewObjectDelegate = function(fieldName, multiplicity)
+						{
+							if(multiplicity == 'many')
+							{
+								if($scope.data[fieldName] == undefined)
+								{
+									$scope.data[fieldName] = []; 
+								}
+								$scope.data[fieldName].push({id : '', parameters : null});
+							}
+							else if(multiplicity == 'one')
+							{
+								$scope.data[fieldName] = {id : '', parameters : null};
+							}
 						}
 						
-						$scope.addNew = function (fieldName, objectTypeName, multiplicity) {
+						$scope.addNew = function (fieldName, objectTypeId, multiplicity) {
 
-							var object = $rootScope.createNewObject($rootScope.object_types, objectTypeName);
+							var object = $rootScope.createNewObjectOfTypeId(objectTypeId);
 							
 							if(multiplicity == 'many')
 							{
@@ -995,7 +1040,7 @@ module.component('linkField', {
 		'<select ng-if="index == -1" class="form-control" ng-model="data[field]" ng-options="item._id as item.display_name for item in source"></select>' +
 		'<select ng-if="index >= 0" class="form-control" ng-model="data[field][index]" ng-options="item._id as item.display_name for item in source"></select>',
 		bindings: {
-			objecttypename: '=',
+			objecttype: '=',
 			dataitem: '=',
 			fieldname: '=',
 			index: '='
@@ -1013,7 +1058,7 @@ module.component('linkField', {
 							if (newValue) {
 								$scope.synchBindings();
 								
-								dataitemWatch();
+								//dataitemWatch();
 							}
 						  });
 						  
@@ -1022,16 +1067,16 @@ module.component('linkField', {
 							if (angular.isString(newValue)) {
 								$scope.synchBindings();
 
-								fieldnameWatch();
+								//fieldnameWatch();
 							}
 						  });
 						
-						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
+						var objecttypeWatch = $scope.$watch('$ctrl.objecttype',
 						  function(newValue) {
 							if (angular.isString(newValue)) {
 								$scope.synchBindings();	
 								
-								objecttypenameWatch();
+								//objecttypeWatch();
 							}
 						  });
 						  
@@ -1040,7 +1085,7 @@ module.component('linkField', {
 							if (angular.isNumber(newValue)) {
 								$scope.synchBindings();	
 								
-								indexWatch();
+								//indexWatch();
 							}
 						  });
 						
@@ -1048,30 +1093,42 @@ module.component('linkField', {
 						
 						$scope.synchBindings = function () {
 						
-							if(angular.isNumber(self.index) && angular.isString(self.objecttypename) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
+							if(angular.isNumber(self.index) && self.objecttype && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
 							{
 								$scope.data = self.dataitem;
 								$scope.field = self.fieldname;
 								$scope.index = self.index;
 								
-								$http({
-								method: 'GET',
-								url: serviceRootURL + '/object_types/' + self.objecttypename
-								}).then(function successCallback(response) {
-											var object_type = response.data;
-											
-											$http({
-											  method: 'GET',
-											  url: serviceRootURL + '/' + object_type.name
+								if(angular.isString(self.objecttype))
+								{
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/object_types/' + self.objecttype
+										}).then(function successCallback(response) {
+										var object_type = response.data;
+
+										$http({
+											method: 'GET',
+											url: serviceRootURL + '/' + object_type.name
 											}).then(function successCallback(response) {
-														$scope.source = response.data;
-											  }, function errorCallback(response) {
-													$rootScope.showAlert(response.statusText, 'error');
-											  });
-								}, function errorCallback(response) {
-									$rootScope.showAlert(response.statusText, 'error');
-								  }); 
-								
+													$scope.source = response.data;
+											}, function errorCallback(response) {
+												$rootScope.showAlert(response.statusText, 'error');
+											});
+										}, function errorCallback(response) {
+										$rootScope.showAlert(response.statusText, 'error');
+										}); 
+								}
+								else {
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/' + self.objecttype.name
+										}).then(function successCallback(response) {
+												$scope.source = response.data;
+										}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+										});	
+								}
 								
 								$scope.bindingsSynched = true;
 							}
@@ -1082,7 +1139,7 @@ module.component('linkField', {
 module.component('delegateField', {
 		templateUrl: 'templates/delegate-field.html',
 		bindings: {
-			objecttypename: '=',
+			objecttype: '=',
 			dataitem: '=',
 			fieldname: '=',
 			index: '=',
@@ -1100,37 +1157,48 @@ module.component('delegateField', {
 						
 						$scope.delegateChanged = function(e) {
 							if (e) {
-							  e.preventDefault();
-							  e.stopPropagation();
+							  //e.preventDefault();
+							  //e.stopPropagation();
 							}
 							
-							var parameters = [];
-							var delegate = $rootScope.getById($scope.source, $scope.data[$scope.field].id);
+							//$scope.data[$scope.field].parameters = null;
 							
-							for(var i = 0; i < delegate.parameters.length; i++)
+							var id;
+							if($scope.index == -1)
 							{
-								var parameter = delegate.parameters[i];
-								
-								if(!parameter.is_internal)
-								{
-									var parameter_value = $rootScope.createNewObject($rootScope.object_types, $scope.parameter_value_object_type._id);
-									
-									parameter_value.name = parameter.name;
-									parameter_value.display_name = parameter.display_name;
-									
-									parameters.push(parameter_value);
-								}
-								
+								id = $scope.data[$scope.field].id;
+							}
+							else if($scope.index >= 0)
+							{
+								id = $scope.data[$scope.field][$scope.index].id;
 							}
 							
-							$scope.data[$scope.field].parameters = parameters;
+							$http({
+								method: 'GET',
+								url: serviceRootURL + '/' + $scope.object_type.name + '/' + id + '/delegate'
+								}).then(function successCallback(response) {
+										$scope.delegate_object_type = response.data;
+										var parameters = $rootScope.createNewObjectOfType($scope.delegate_object_type);
+										if($scope.index == -1)
+										{
+											$scope.data[$scope.field].parameters = parameters;
+										}
+										else if($scope.index >= 0)
+										{
+											$scope.data[$scope.field][$scope.index].parameters = parameters;
+										}
+										
+								}, function errorCallback(response) {
+									$rootScope.showAlert(response.statusText, 'error');
+								});
+								
 						};
 						
 						var submittedWatch = $scope.$watch('$ctrl.submitted',
 						  function(newValue) {
 							if (newValue) {								
 								$scope.synchBindings();
-								submittedWatch();
+								//submittedWatch();
 							}
 						  });
 						  
@@ -1138,7 +1206,7 @@ module.component('delegateField', {
 						  function(newValue) {
 							if (newValue) {								
 								$scope.synchBindings();
-								formWatch();
+								//formWatch();
 							}
 						  });
 						  
@@ -1146,7 +1214,7 @@ module.component('delegateField', {
 						  function(newValue) {
 							if (angular.isString(newValue)) {								
 								$scope.synchBindings();
-								pathWatch();
+								//pathWatch();
 							}
 						  });
 						  
@@ -1154,7 +1222,7 @@ module.component('delegateField', {
 						  function(newValue) {
 							if (newValue) {
 								$scope.synchBindings();
-								dataitemWatch();
+								//dataitemWatch();
 							}
 						  });
 						  
@@ -1162,15 +1230,15 @@ module.component('delegateField', {
 						  function(newValue) {
 							if (angular.isString(newValue)) {
 								$scope.synchBindings();
-								fieldnameWatch();
+								//fieldnameWatch();
 							}
 						  });
 						
-						var objecttypenameWatch = $scope.$watch('$ctrl.objecttypename',
+						var objecttypeWatch = $scope.$watch('$ctrl.objecttype',
 						  function(newValue) {
 							if (angular.isString(newValue)) {
 								$scope.synchBindings();	
-								objecttypenameWatch();
+								//objecttypeWatch();
 							}
 						  });
 						  
@@ -1179,7 +1247,7 @@ module.component('delegateField', {
 							if (angular.isNumber(newValue)) {
 								$scope.synchBindings();	
 								
-								indexWatch();
+								//indexWatch();
 							}
 						  });
 						
@@ -1187,7 +1255,7 @@ module.component('delegateField', {
 						
 						$scope.synchBindings = function () {
 						
-							if(typeof self.submitted == "boolean" && self.form && angular.isString(self.path) && angular.isNumber(self.index) && angular.isString(self.objecttypename) && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
+							if(typeof self.submitted == "boolean" && self.form && angular.isString(self.path) && angular.isNumber(self.index) && self.objecttype && self.dataitem && angular.isString(self.fieldname) && !$scope.bindingsSynched)
 							{
 								$scope.submitted = self.submitted;
 								$scope.form = self.form;
@@ -1196,33 +1264,74 @@ module.component('delegateField', {
 								$scope.data = self.dataitem;
 								$scope.field = self.fieldname;
 								
-								$http({
-								method: 'GET',
-								url: serviceRootURL + '/object_types/' + self.objecttypename
-								}).then(function successCallback(response) {
-											var object_type = response.data;
+								if(angular.isString(self.objecttype))
+								{
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/object_types/' + self.objecttype
+										}).then(function successCallback(response) {
+										$scope.object_type = response.data;
+
+										$http({
+											method: 'GET',
+											url: serviceRootURL + '/' + $scope.object_type.name
+											}).then(function successCallback(response) {
+											$scope.source = response.data;
+											
+											var id;
+											if($scope.index == -1)
+											{
+												id = $scope.data[$scope.field].id;
+											}
+											else if($scope.index >= 0)
+											{
+												id = $scope.data[$scope.field][$scope.index].id;
+											}
+											
 											
 											$http({
-											  method: 'GET',
-											  url: serviceRootURL + '/' + object_type.name
-											}).then(function successCallback(response) {
-														$scope.source = response.data;
-														
-														$http({
-															method: 'GET',
-															url: serviceRootURL + '/object_types?query=@.name==\'parameter_value\''
-															}).then(function successCallback(response) {
-																	$scope.parameter_value_object_type = response.data[0];
-															}, function errorCallback(response) {
-																$rootScope.showAlert(response.statusText, 'error');
-															});
-															
-											  }, function errorCallback(response) {
+												method: 'GET',
+												url: serviceRootURL + '/' + $scope.object_type.name + '/' + id + '/delegate'
+												}).then(function successCallback(response) {
+														$scope.delegate_object_type = response.data;
+												}, function errorCallback(response) {
 													$rootScope.showAlert(response.statusText, 'error');
-											  });
-								}, function errorCallback(response) {
-									$rootScope.showAlert(response.statusText, 'error');
-								  }); 
+												});
+											
+											
+											}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+											});
+										}, function errorCallback(response) {
+										$rootScope.showAlert(response.statusText, 'error');
+										}); 
+								}
+								else {
+									
+									$scope.object_type = response.data;
+
+									$http({
+										method: 'GET',
+										url: serviceRootURL + '/' + $scope.object_type.name
+										}).then(function successCallback(response) {
+										$scope.source = response.data;
+
+										$http({
+											method: 'GET',
+											url: serviceRootURL + '/' + $scope.object_type.name + '/' + $scope.data[$scope.field].id + '/delegate'
+											}).then(function successCallback(response) {
+													$scope.delegate_object_type = response.data;
+											}, function errorCallback(response) {
+												$rootScope.showAlert(response.statusText, 'error');
+											});
+
+										}, function errorCallback(response) {
+										$rootScope.showAlert(response.statusText, 'error');
+										});
+										 
+									
+								}
+								
 								
 								
 								$scope.bindingsSynched = true;
@@ -1232,92 +1341,114 @@ module.component('delegateField', {
 	});
 
 module.directive('showErrors', function ($timeout, showErrorsConfig) {
-      var getShowSuccess, linkFn;
-      getShowSuccess = function (options) {
-        var showSuccess;
-        showSuccess = showErrorsConfig.showSuccess;
-        if (options && options.showSuccess != null) {
-          showSuccess = options.showSuccess;
-        }
-        return showSuccess;
-      };
-      linkFn = function (scope, el, attrs, formCtrl, $injector) {
-        var blurred, inputEl, inputName, inputNgEl, options, showSuccess, toggleClasses;
+    var getShowSuccess, linkFn;
+    
+	getShowSuccess = function (options) {
+		var showSuccess;
+		showSuccess = showErrorsConfig.showSuccess;
+		if (options && options.showSuccess != null) {
+			showSuccess = options.showSuccess;
+		}
+		return showSuccess;
+	};
+	  
+    linkFn = function (scope, el, attrs, formCtrl, $injector) {
+		var blurred, inputEl, inputName, inputNgEl, options, showSuccess, toggleClasses;
         blurred = false;
         options = scope.$eval(attrs.showErrors);
         showSuccess = getShowSuccess(options);
         inputEl = el[0].querySelector('[name]');
         inputNgEl = angular.element(inputEl);
         inputName = eval(inputNgEl.attr('name1'));
-        if (!inputName) {
-          throw 'show-errors element has no child input elements with a \'name\' attribute';
+        
+		if (!inputName) {
+			throw 'show-errors element has no child input elements with a \'name\' attribute';
         }
-        inputNgEl.bind('blur', function () {
-          blurred = true;
-          return toggleClasses(formCtrl[inputName].$invalid);
+        
+		inputNgEl.bind('blur', function () {
+			blurred = true;
+			return toggleClasses(formCtrl[inputName].$invalid);
         });
+		
         scope.$watch(function () {
-          return formCtrl[inputName] && formCtrl[inputName].$invalid;
+			return formCtrl[inputName] && formCtrl[inputName].$invalid;
         }, function (invalid) {
-          if (!blurred) {
-            return;
-          }
-          return toggleClasses(invalid);
+			if (!blurred) {
+				return;
+			}
+			return toggleClasses(invalid);
         });
+		
         scope.$on('show-errors-check-validity', function () {
-          return toggleClasses(formCtrl[inputName].$invalid);
+			return toggleClasses(formCtrl[inputName].$invalid);
         });
+		
         scope.$on('show-errors-reset', function () {
-          return $timeout(function () {
-            el.removeClass('has-error');
-            el.removeClass('has-success');
-            return blurred = false;
+			return $timeout(function () {
+				el.removeClass('has-error');
+				el.removeClass('has-success');
+				return blurred = false;
           }, 0, false);
         });
+		
         return toggleClasses = function (invalid) {
-          el.toggleClass('has-error', invalid);
-          if (showSuccess) {
-            return el.toggleClass('has-success', !invalid);
-          }
+			el.toggleClass('has-error', invalid);
+			if (showSuccess) {
+				return el.toggleClass('has-success', !invalid);
+			}
         };
-      };
-      return {
-        restrict: 'A',
-        require: '^form',
-        compile: function (elem, attrs) {
-          if (!elem.hasClass('form-group')) {
-            throw 'show-errors element does not have the \'form-group\' class';
-          }
-          return linkFn;
-        }
-      };
-    }
-  );
+	};
+	  
+    return {
+		restrict: 'A',
+		require: '^form',
+		compile: function (elem, attrs) {
+			if (!elem.hasClass('form-group')) {
+				throw 'show-errors element does not have the \'form-group\' class';
+			}
+			return linkFn;
+		}
+    };
+});
   
 module.provider('showErrorsConfig', function () {
-    var _showSuccess;
-    _showSuccess = false;
-    this.showSuccess = function (showSuccess) {
-      return _showSuccess = showSuccess;
-    };
-    this.$get = function () {
-      return { showSuccess: _showSuccess };
-    };
-  });
-  
-module.config(['$locationProvider', '$routeProvider', 'NotificationProvider', function($locationProvider, $routeProvider, NotificationProvider) {
-  $locationProvider.hashPrefix('!');
-  
-  NotificationProvider.setOptions({
-	templateUrl: 'ui_notification.html',
-	delay: 5000,
-	startTop: 20,
-	startRight: 10,
-	verticalSpacing: 20,
-	horizontalSpacing: 20,
-	positionX: 'center',
-	positionY: 'bottom'
+	var _showSuccess;
+	_showSuccess = false;
+	
+	this.showSuccess = function (showSuccess) {
+		return _showSuccess = showSuccess;
+	};
+	
+	this.$get = function () {
+		return { showSuccess: _showSuccess };
+	};
 });
+  
+module.config([
+'$locationProvider', 
+'$routeProvider', 
+'NotificationProvider', 
+'$sceDelegateProvider', 
+function($locationProvider, $routeProvider, NotificationProvider, $sceDelegateProvider) {
+	$locationProvider.hashPrefix('!');
+  
+	NotificationProvider.setOptions({
+		templateUrl: 'ui_notification.html',
+		delay: 5000,
+		startTop: 20,
+		startRight: 10,
+		verticalSpacing: 20,
+		horizontalSpacing: 20,
+		positionX: 'center',
+		positionY: 'bottom'
+		});
+
+	$sceDelegateProvider.resourceUrlWhitelist([
+		// Allow same origin resource loads.
+		'self',
+		// Allow loading templates from api.
+		'http://127.0.0.1:8181/**'
+	  ]);
 }]);
 
 	
@@ -1348,6 +1479,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 						}).then(function successCallback(response) {
 								$rootScope.app = response.data;
 								$rootScope.appId = $rootScope.app._id;
+								$rootScope.appName = $rootScope.app.display_name + ' (Build)';
 						}, function errorCallback(response) {
 							$rootScope.showAlert(response.statusText, 'error');
 						});
@@ -1383,6 +1515,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 						}).then(function successCallback(response) {
 								$rootScope.app = response.data;
 								$rootScope.appId = $rootScope.app._id;
+								$rootScope.appName = $rootScope.app.display_name + ' (Build)';
 						}, function errorCallback(response) {
 							$rootScope.showAlert(response.statusText, 'error');
 						});
@@ -1394,7 +1527,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 				
 				$http({
 					method: 'GET',
-					url: serviceRootURL + '/page/' + $routeParams.page
+					url: serviceRootURL + '/page/' + $routeParams.page + '/?expand=views'
 					}).then(function successCallback(response) {
 							$scope.page = response.data;
 					}, function errorCallback(response) {
