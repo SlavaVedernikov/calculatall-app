@@ -242,16 +242,16 @@
 											
 											<ul ng-if="container.tabs != undefined && container.tabs.length > 0" id="tabs" class="nav nav-tabs" data-tabs="tabs">
 												<li ng-repeat="tab in container.tabs" ng-class="{'active': $index==0}">
-													'<a href="/#{{tab.name}}" data-toggle="tab">{{tab.display_name}}</a>
+													<a href="/#{{tab.name}}" data-toggle="tab">{{tab.display_name}}</a>
 												</li>
 											</ul>
 														
 											<div ng-if="container.tabs != undefined && container.tabs.length > 0" class="tab-content">
 												<div ng-repeat="component in container.views" ng:class="{true:'tab-pane active', false:'tab-pane'}[$index==0]" id="{{component.tab}}">
-														<ng-include src="getAPIRootURL() + '/templates/table-view'"></ng-include>
+														<!--<ng-include src="getAPIRootURL() + '/templates/table-view'"></ng-include>-->
 														
 														<!--<ng-include src="'table-view.html'"></ng-include>-->
-														<!--<table-view view="getByName(page.views, component.view)"></table-view>-->
+														<table-view view="getByName(page.views, component.view)"></table-view>
 												</div>
 											</div>
 											

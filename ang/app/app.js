@@ -243,6 +243,67 @@ module.run(function($rootScope, appSettings, Notification){
 	};
 });
 
+module.component('layout', {
+	templateUrl: 'templates/layout.html',
+	transclude: true,
+	controller: function ($routeParams, $scope, $http, $location, $rootScope, appSettings) {
+		var self = this;
+		
+		this.$onInit = function() {
+			
+		};
+		
+	}
+					
+});
+
+module.component('row', {
+	templateUrl: 'templates/row.html',
+	transclude: true,
+	controller: function ($routeParams, $scope, $http, $location, $rootScope, appSettings) {
+		var self = this;
+		
+		this.$onInit = function() {
+			
+		};
+		
+	}
+					
+});
+
+module.component('column', {
+	templateUrl: 'templates/column.html',
+	transclude: true,
+	bindings: {
+		size: '@'
+	},
+	controller: function ($routeParams, $scope, $http, $location, $rootScope, appSettings) {
+		var self = this;
+		
+		this.$onInit = function() {
+			
+		};
+		
+	}
+					
+});
+
+module.component('pageHeader', {
+	templateUrl: 'templates/page_header.html',
+	bindings: {
+		heading: '@'
+	},
+	controller: function ($routeParams, $scope, $http, $location, $rootScope, appSettings) {
+		var self = this;
+		
+		this.$onInit = function() {
+			
+		};
+		
+	}
+					
+});
+
 module.component('navigationView', {
 		template:
 		'<div class="navbar-default sidebar" role="navigation">' +
@@ -294,7 +355,7 @@ module.component('navigationView', {
 
 module.component('tableView', {
 		template: '<div>' +
-			'<table datatable="" dt-options="$ctrl.dtOptions" dt-columns="$ctrl.dtColumns" dt-instance="$ctrl.dtIntanceCallback" class="row-border hover"></table>' +
+			'<table ng-if="$ctrl.dtOptions && $ctrl.dtColumns" datatable="" dt-options="$ctrl.dtOptions" dt-columns="$ctrl.dtColumns" dt-instance="$ctrl.dtIntanceCallback" class="row-border hover"></table>' +
 			'</div>',
 		bindings: {
 			view: '='
@@ -307,7 +368,7 @@ module.component('tableView', {
 
 						self.edit = edit;
 						self.delete = deleteRow;
-						self.dataPromise = dataPromise;
+					
 						self.dtInstance = {};
 						self.renderActions = renderActions;
 						self.renderValue = renderValue;
@@ -318,47 +379,8 @@ module.component('tableView', {
 						
 						self.view_param = '';
 						
-						for(var i = 0; i < self.view.fields.length; i++)
-						{
-							if(self.view_param != '')
-							{
-								self.view_param += ',';
-							}
-							self.view_param += self.view.fields[i].source_path;
-							self.view_param += '|';
-							//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
-							self.view_param += self.view.fields[i].source_path.replace(/\./g,"_");
-						}
-						
-						self.dtColumns = columnsPromise();
-						
-						self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
-							.withPaginationType('full_numbers')
-							//Set default page size to 10
-							.withDisplayLength((self.view.page_size) ? Number(self.view.page_size) : 10)
-							//.withDisplayLength(10)
-							.withOption('createdRow', createdRow)
-							//.withOption('responsive', true)
-							//.withOption('colReorder', true)
-							//.withOption('dom', 'C<"clear">lfrtip')
-							//Look at styling, it's too dark at the moment
-							//.withOption('select', true)
-							.withButtons([{
-									text: 'Add new',
-									key: '1',
-									action: function (e, dt, node, config) {
-												add(self.view.source_object_type);
-											}
-								}
-							]);
-							
-						self.dtIntanceCallback = function (instance) {
-							self.dtInstance = instance;
-						}		  
-								
-						
-						function columnsPromise(){
-							var dfd = $q.defer();
+						self.columnsPromise = function(){
+							var deferred = $q.defer();
 							
 							var serviceRootURL = $rootScope.getAPIRootURL();
 							
@@ -406,18 +428,18 @@ module.component('tableView', {
 										columns.push(self.DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
 											.renderWith(self.renderActions));
 										
-										dfd.resolve(columns);
+										deferred.resolve(columns);
 										
 									}, function errorCallback(response) {
 											$rootScope.showAlert(response.statusText, 'error');
 									  });
 									
 							
-							return dfd.promise;	  
+							return deferred.promise;	  
 						}
 						
-						function dataPromise() {
-							var dfd = $q.defer();
+						self.dataPromise = function() {
+							var deferred = $q.defer();
 							
 							var serviceRootURL = $rootScope.getAPIRootURL();
 							
@@ -433,7 +455,7 @@ module.component('tableView', {
 											url: serviceRootURL + '/' + object_type.name + '/?view=' + self.view_param + (query ? '&query=' + query : ''),
 										}).then(function successCallback(response) {
 												self.data = response.data;
-												dfd.resolve(self.data);
+												deferred.resolve(self.data);
 										  }, function errorCallback(response) {
 												$rootScope.showAlert(response.statusText, 'error');
 										  });
@@ -441,9 +463,371 @@ module.component('tableView', {
 											$rootScope.showAlert(response.statusText, 'error');
 									  });
 							
-							return dfd.promise;
+							return deferred.promise;
 						}
-		
+						
+						self.viewPromise = function(){
+							var deferred = $q.defer();
+							var data = '';
+							
+							for(var i = 0; i < self.view.fields.length; i++)
+							{
+								if(data != '')
+								{
+									data += ',';
+								}
+								data += self.view.fields[i].source_path;
+								data += '|';
+								//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+								data += self.view.fields[i].source_path.replace(/\./g,"_");
+							}
+							deferred.resolve(data);
+							return deferred.promise;
+						};
+
+						self.viewPromise()
+							.then(function(data){
+								self.view_param = data;
+								
+								self.dtColumns = self.columnsPromise();
+								
+								self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
+								.withPaginationType('full_numbers')
+								//Set default page size to 10
+								.withDisplayLength((self.view.page_size) ? Number(self.view.page_size) : 10)
+								//.withDisplayLength(10)
+								.withOption('createdRow', createdRow)
+								//.withOption('responsive', true)
+								//.withOption('colReorder', true)
+								//.withOption('dom', 'C<"clear">lfrtip')
+								//Look at styling, it's too dark at the moment
+								//.withOption('select', true)
+								.withButtons([{
+										text: 'Add new',
+										key: '1',
+										action: function (e, dt, node, config) {
+													add(self.view.source_object_type);
+												}
+									}
+								]);	
+								  
+							}); 
+						
+						/*
+						for(var i = 0; i < self.view.fields.length; i++)
+						{
+							if(self.view_param != '')
+							{
+								self.view_param += ',';
+							}
+							self.view_param += self.view.fields[i].source_path;
+							self.view_param += '|';
+							//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+							self.view_param += self.view.fields[i].source_path.replace(/\./g,"_");
+						}
+						*/
+						
+						
+							
+									
+						self.dtIntanceCallback = function (instance) {
+							self.dtInstance = instance;
+						}
+								
+						function add(object_type) {
+							$rootScope.object_type = object_type;
+							openModal();
+						}
+						
+						function edit(id, object_type) {
+							$rootScope.object_type = object_type;
+							$rootScope.object_id = id;
+							openModal();
+						}
+						
+						function deleteRow(id, object_type) {
+						
+							var serviceRootURL = $rootScope.getAPIRootURL();
+							
+							$http({
+							method: 'GET',
+							url: serviceRootURL + '/object_types/' + object_type
+							}).then(function successCallback(response) {
+										var object_type = response.data;
+										
+										$http({
+											method: 'DELETE',
+											url: serviceRootURL + '/' + object_type.name + '/' + id,
+										}).then(function successCallback(response) {
+												self.dtInstance.reloadData();
+												$rootScope.showAlert('Object is deleted', 'success');
+										  }, function errorCallback(response) {
+												$rootScope.showAlert(response.statusText, 'error');
+										  });
+							}, function errorCallback(response) {
+								$rootScope.showAlert(response.statusText, 'error');
+							  }); 
+							
+						}
+						
+						function createdRow(row, data, dataIndex) {
+							// Recompiling so we can bind Angular directive to the DT
+							$compile(angular.element(row).contents())($scope);
+						}
+						
+						function openModal() {
+							
+							modalInstance = $uibModal.open({
+							  template: '<form-view></form-view>',
+							  windowClass: 'right fade'
+							});
+							
+							modalInstance.rendered.then(function(){
+								setModalMaxHeight('form-view');
+							});
+							//setModalMaxHeight('form-view');
+							
+							modalInstance.result.then(function (data) {
+								// Reload the data so that DT is refreshed
+								self.dtInstance.reloadData();
+								$rootScope.showAlert((($rootScope.object_id != '') ? 'Object is successfully updated' : 'Object is successfully created'), 'success');
+							});
+							
+							modalInstance.closed.then(function (data) {
+								$rootScope.object_type = '';
+								$rootScope.object_id = '';
+							});
+						}
+						
+						function setModalMaxHeight(element) {
+							var element     = $(element);
+							var content     = element.find('.modal-body');
+							var borderWidth   = content.outerHeight() - content.innerHeight();
+							var dialogMargin  = $(window).width() > 767 ? 60 : 20;
+							var contentHeight = $(window).height() - (dialogMargin + borderWidth);
+							var headerHeight  = element.find('.modal-header').outerHeight() || 0;
+							var footerHeight  = element.find('.modal-footer').outerHeight() || 0;
+							var maxHeight     = contentHeight - (headerHeight + footerHeight);
+
+							content.css({
+							  'overflow': 'hidden'
+							});
+
+							element
+							.find('.modal-body').css({
+							  'max-height': maxHeight,
+							  'overflow-y': 'auto'
+							});
+						}
+						
+						function renderActions(data, type, full, meta) {
+							return 	'<button class="btn btn-warning" ng-click="$ctrl.edit(\'' + data._id + '\', \'' + self.view.source_object_type + '\')">' +
+									'   <i class="fa fa-edit"></i>' +
+									'</button>&nbsp;' +
+									'<button class="btn btn-danger" ng-click="$ctrl.delete(\'' + data._id + '\', \'' + self.view.source_object_type + '\')">' +
+									'   <i class="fa fa-trash-o"></i>' +
+									'</button>';
+						}
+						
+						function renderValue(data, type, full, meta) {
+							var result = data;
+							
+							var field = self.view_object_type.fields[meta.col];
+							var field_valueLookup;
+													
+							if(field.source)
+							{
+								field_valueLookup = $rootScope.getByKey(field.source, data);
+							}
+							
+							if(field_valueLookup)
+							{
+								result = (type == 'sort') ? field_valueLookup.value : field_valueLookup.display_name;
+							}
+							
+							
+							return result;
+						}
+					}
+	});
+	
+module.component('tableView1', {
+		template: '<div>' +
+			'<table ng-if="$ctrl.dtOptions && $ctrl.dtColumns" datatable="" dt-options="$ctrl.dtOptions" dt-columns="$ctrl.dtColumns" dt-instance="$ctrl.dtIntanceCallback" class="row-border hover"></table>' +
+			'</div>',
+		bindings: {
+			viewid: '@',
+			pagesize: '@'
+		},
+		controller: function (DTOptionsBuilder, DTColumnBuilder, $routeParams, $scope, $http, $q, $compile, $uibModal, $rootScope, appSettings) {
+						
+						var self = this;
+						
+						var serviceRootURL = $rootScope.getAPIRootURL();
+
+						self.edit = edit;
+						self.delete = deleteRow;
+					
+						self.dtInstance = {};
+						self.renderActions = renderActions;
+						self.renderValue = renderValue;
+						self.DTColumnBuilder = DTColumnBuilder;
+						self.DTOptionsBuilder = DTOptionsBuilder;
+						
+						self.view_object_type = null;
+						
+						self.view_param = '';
+						
+						self.columnsPromise = function(){
+							var deferred = $q.defer();
+							
+							var serviceRootURL = $rootScope.getAPIRootURL();
+							
+							$http({
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + self.view.source_object_type + '/?view=' + self.view_param
+								}).then(function successCallback(response) {
+										self.view_object_type = response.data;
+										
+										var columns = [];
+								
+										for(var i = 0; i < self.view.fields.length; i++) {
+											//TODO: Change to use '@' as path field separator
+											var field_name = self.view.fields[i].source_path.replace(/\./g,"_");
+											var field = $rootScope.getByName(self.view_object_type.fields, field_name);
+											var field_object_type = $rootScope.getById($rootScope.object_types, field.data_type.object_type);
+											
+											var column_type = 'string'
+											
+											if(field_object_type)
+											{
+												switch(field_object_type.name) {
+													case 'string':
+														column_type = 'string';
+														break;
+													case 'integer':
+														column_type = 'num';
+														break;
+													default:
+														column_type = 'string';
+												}
+											}
+											
+											
+											//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+											var column = self.DTColumnBuilder.newColumn(field_name)
+												.withTitle(self.view.fields[i].display_name)
+												.withOption('defaultContent', 'n/a')
+												.withOption('type', column_type)
+												.renderWith(self.renderValue);
+
+											columns.push(column);
+										}
+										
+										columns.push(self.DTColumnBuilder.newColumn(null).withTitle('Actions').notSortable()
+											.renderWith(self.renderActions));
+										
+										deferred.resolve(columns);
+										
+									}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+									  });
+									
+							
+							return deferred.promise;	  
+						}
+						
+						self.dataPromise = function() {
+							var deferred = $q.defer();
+							
+							var serviceRootURL = $rootScope.getAPIRootURL();
+							
+							$http({
+								method: 'GET',
+								url: serviceRootURL + '/object_types/' + self.view.source_object_type
+								}).then(function successCallback(response) {
+										var object_type = response.data;
+										var query = ((self.view.query && self.view.query != '') ? $rootScope.getUntokenisedString(self.view.query, 'context', $rootScope) : undefined);
+										
+										$http({
+											method: 'GET',
+											url: serviceRootURL + '/' + object_type.name + '/?view=' + self.view_param + (query ? '&query=' + query : ''),
+										}).then(function successCallback(response) {
+												self.data = response.data;
+												deferred.resolve(self.data);
+										  }, function errorCallback(response) {
+												$rootScope.showAlert(response.statusText, 'error');
+										  });
+									}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+									  });
+							
+							return deferred.promise;
+						}
+						
+						self.viewPromise = function(){
+							var deferred = $q.defer();
+							
+							var serviceRootURL = $rootScope.getAPIRootURL();
+							
+							$http({
+								method: 'GET',
+								url: serviceRootURL + '/view/' + self.viewid
+								}).then(function successCallback(response) {
+										self.view = response.data;
+										
+										var data = '';
+										for(var i = 0; i < self.view.fields.length; i++)
+										{
+											if(data != '')
+											{
+												data += ',';
+											}
+											data += self.view.fields[i].source_path;
+											data += '|';
+											//TODO: Refactor the replacement e.g. add a calculated alias attribute to a view_field type that would do the replacement
+											data += self.view.fields[i].source_path.replace(/\./g,"_");
+										}
+										deferred.resolve(data);
+									}, function errorCallback(response) {
+											$rootScope.showAlert(response.statusText, 'error');
+									  });  
+									  
+							return deferred.promise;
+						};
+
+						self.viewPromise()
+							.then(function(data){
+								self.view_param = data;
+								
+								self.dtColumns = self.columnsPromise();
+								
+								self.dtOptions = self.DTOptionsBuilder.fromFnPromise(self.dataPromise)
+								.withPaginationType('full_numbers')
+								//Set default page size to 10
+								.withDisplayLength((self.pagesize) ? Number(self.pagesize) : 10)
+								//.withDisplayLength(10)
+								.withOption('createdRow', createdRow)
+								//.withOption('responsive', true)
+								//.withOption('colReorder', true)
+								//.withOption('dom', 'C<"clear">lfrtip')
+								//Look at styling, it's too dark at the moment
+								//.withOption('select', true)
+								.withButtons([{
+										text: 'Add new',
+										key: '1',
+										action: function (e, dt, node, config) {
+													add(self.view.source_object_type);
+												}
+									}
+								]);	
+								  
+							}); 
+									
+						self.dtIntanceCallback = function (instance) {
+							self.dtInstance = instance;
+						}
+								
 						function add(object_type) {
 							$rootScope.object_type = object_type;
 							openModal();
@@ -1456,7 +1840,7 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 	
 	.config(['$locationProvider', '$routeProvider', function($locationProvider, $routeProvider ) {
 		$routeProvider.when('/:owner/:application/:tenant', {
-			templateUrl: 'page.html',
+			templateUrl: 'templates/page.html',
 			controller: function($scope, $routeParams, $location, $http, $rootScope, appSettings) {
 				var self = this;
 				
@@ -1493,7 +1877,8 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 	  });
 	  
 		$routeProvider.when('/:owner/:application/:tenant/:page', {
-		templateUrl: 'page.html',
+		//templateUrl: 'templates/page.html',
+		templateUrl: 'templates/page_1.html',
 			controller: function($scope, $routeParams, $location, $http, $rootScope, appSettings) {
 				var self = this;
 				
@@ -1527,7 +1912,8 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 				
 				$http({
 					method: 'GET',
-					url: serviceRootURL + '/page/' + $routeParams.page + '/?expand=views'
+					//url: serviceRootURL + '/page/' + $routeParams.page + '/?expand=views'
+					url: serviceRootURL + '/page_1/' + $routeParams.page
 					}).then(function successCallback(response) {
 							$scope.page = response.data;
 					}, function errorCallback(response) {
@@ -1552,6 +1938,14 @@ angular.module('myApp.moduleLoader', ['ngRoute'])
 					}, function errorCallback(response) {
 						$rootScope.showAlert(response.statusText, 'error');
 					});
+					
+				$scope.getLayoutURL = function(){	
+					var result = $rootScope.getAPIRootURL() + '/page_1/' + $scope.page._id + '/layout'; 
+					
+					return result;
+				};
+				
+	
 			}
 	  });
 	}]);
