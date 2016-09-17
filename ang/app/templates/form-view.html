@@ -1,0 +1,19 @@
+<form ng-if="object_type" name="userForm" novalidate>
+<div class="modal-header">
+	<h3 class="modal-title">{{data.display_name}}</h3>
+	<h5 ng-if="data.display_name">{{object_type.display_name}}</h5>
+</div>
+<div class="modal-body">
+	<div class="panel panel-default">
+		<div class="panel-body">
+			<form name = "formView">
+				<form-fields objecttype="object_type._id" dataitem="data" path="path" form="userForm" submitted="submitted"></form-fields>
+			</form>
+		</div>
+	</div>
+</div>
+<div class="modal-footer">
+	<button class="btn btn-primary" ng-click="ok()">OK</button>
+	<button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+</div>
+</form>
